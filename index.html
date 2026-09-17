@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+	<title>专栏文章</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	<meta name="author" content="netease" />
+	<meta name="version" content="1.0"/>
+	<meta name="description" content="LOFTER资讯MVP" />
+	<meta name="keywords" content="嗑cp、图片社交、同人文、头像、壁纸、二次元、影视剧、女神图片、娱乐资讯"/>
+	<meta name="description" content="LOFTER资讯MVP"/>
+<link href="//l.bst.126.net/s/pt_lib_macro.css?3ef07d22875afbe6365c3e0e279a6155" type="text/css" rel="stylesheet"/>
+
+<link href="//lofter.lf127.net/1671501289659/nep.min.css" rel="stylesheet">
+<link href="//l.bst.126.net/s/pt_page_longpost_longpost.css?9bc1423bf41b0b35203b207a0f6f62a8" type="text/css" rel="stylesheet"/>
+</head>
+<body>
+<div class="g-hd g-hd-tip f-dn" id="showDldTipsInIpad">
+  <div class="g-hdc">
+    <div class="m-hdtip">
+      <div class="logo"></div>
+      <p class="slogan">LOFTER for ipad —— 让兴趣，更有趣</p>
+      <a href="//www.lofter.com/app/QRCodedownload?act=qbipaddl_20141014_01" class="btn" target="_blank">点击下载</a>
+      <a href="" class="w-close2">关闭</a>
+    </div>
+  </div>
+</div>
+<a style="display:none;" rel="nofollow" href="//www.lofter.com/feedback.do" class="w-fank">意见反馈</a>
+<div id="lofter-top-bar" style="min-height:64px;margin-bottom: 30px;background: #1F1F1F;"></div>
+<style>body{background-image:none;}</style>
+<script type="text/javascript">
+if (!window.lofterUISdkPreregister) {
+window.lofterUISdkPreregister = [];
+}
+window.lofterUISdkPreregister.push([
+'top-bar',
+{
+container: '#lofter-top-bar'
+}
+]);
+</script>
+<div class="g-hd" style="display: none;">
+<div id="lofterheadbar" class="g-hdc">
+    <h1 class="m-logo"><a href="//www.lofter.com" >LOFTER-网易轻博</a></h1>
+    <div class="m-nav" id="topbar">
+          <ul class="nav1 tbtag">
+              <li style="margin:0" class="j-crt"><a rel="nofollow" href="//www.lofter.com" class="indexpage">首页</a><a href="/" class="w-tip w-tip-1" style="font-size:12px;color:white;text-shadow:none;display:none;"><span class="tipc tbtag">5</span></a></li>
+              <li class=""><a href="//www.lofter.com/view?act=qbview_20130930_01">浏览</a></li>
+              <li><a href="//www.lofter.com/app?act=qbdashboardclick_20141120_01">下载APP</a></li>
+              <li><a target="_blank" rel="nofollow" href="//www.lofter.com/activity">话题</a></li>
+              <li><a target="_blank" rel="nofollow" href="//www.lofter.com/explore?type=recommend">达人</a></li>
+              <li><a target="_blank" rel="nofollow" href="//www.lofter.com/setting">设置</a></li>
+
+              <li>
+                <a href="javascript:void(0);" class="tbtag">更多<span class="more tbtag">&nbsp;&nbsp;&nbsp;</span></a>
+                
+                <div class="a-w-sel a-w-sel-4 tbtag">
+                  <div class="w-sel w-sel-4" style="margin-top:-400px;">
+                      <div class="selc">
+                          <div class="selcc tbtag">
+                                <div class="seli"><a class="nx-2" href="//www.lofter.com/inviteelist#siteIndex=0&typeIndex=0">寻找好友</a></div>
+                                <div class="seli"><a class="nx-6" href="//www.lofter.com/export">导入导出</a></div>
+                                <div class="seli"><a class="nx-3" href="//www.lofter.com/app?act=qbappentry_20140303_01">移动客户端</a></div>
+                                <div class="seli" id="uapptip2"><a class="nx-7" href="//www.lofter.com/uappsetting?from=dashboard">UAPP-创建个人应用</a></div>
+                                <div class="seli"><a class="nx-4" href="//www.lofter.com/front/customer-service">帮助反馈及投诉:0571-89852053</a></div>
+                                <div class="seli"><a class="nx-5" href="//www.lofter.com/logout">退出</a></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+              </li>
+          </ul>
+
+          <div class="nav2" id="schtagbox">
+            <div class="ssch tbtag">
+                  <form class="xtag">
+                    <a href="#" class="btn xtag"></a>
+                    <label class="xtag" style="display:none;">搜索用户、标签</label>
+                      <input type="text" placeholder="搜索用户、标签" class="xtag" onfocus="this.isfocus = true;"/>
+                      <div class="xtag a-show-mask f-op0">
+                        <div class="new" style="display:none;" id="nav2flnew"></div>
+                      </div>
+                  </form>
+              </div>
+              <div class="m-ssch2  m-ssch-act" style="position:absolute;top:100%;">
+                <div class="suggest">
+                      <div class="sugbox xtag">
+                        </div>
+                    </div>
+                    <div class="a-w-sel a-w-sel-5" style="display:none;">
+                      <div id="taglist" class="w-sel w-sel-5 tbtag" style="margin-top:-9999px;">
+                    <div class="selc">
+                      <div class="m-subscribetags" style="display:none;">
+                                <div class="subttl">我的订阅</div>
+                                <div id="favtagcnew" class="selcc tags">
+                                </div>
+                              </div>
+
+                    </div>
+                  </div>
+                </div>
+              </div>
+          </div>
+
+  </div>
+</div>
+</div>
+	<div class="g-bd" id="g-bd">
+		<iframe id="control_frame" class="control-frame" allowtransparency="true" scrolling="no" frameborder="0" style="position:fixed;clear:both; width: 425px; height: 425px; z-index:1337; top:106px;zoom:1; border:0px; background-color:transparent;" src="//www.lofter.com/control?blogId=483010226&amp;postId=7625235317&amp;ldetail=1"></iframe>
+
+		<img class="banner" id="banner" data-imgurl="https://imglf4.lf127.net/img/bUJweUhHV2xURE9BQko5ZjFGWUIwajVGMUNGUXVVM2FSZGFnYjN2R0pnd3Vrd2dJL0lEYUJRPT0.jpg" src="https://imglf4.lf127.net/img/bUJweUhHV2xURE9BQko5ZjFGWUIwajVGMUNGUXVVM2FSZGFnYjN2R0pnd3Vrd2dJL0lEYUJRPT0.jpg">
+		<div class="m-cnt" id="m-cnt">
+			<div class="title" id="title">天体観測「Tentai Kansoku」Catalogue</div>
+
+			<div class="info f-cb" onclick="loft.m.mvp.g.doAuthorStatistic(this,event);">
+				<a class="lnk ava-statistic" target="_blank" href="https://harakokougaku.lofter.com">
+					<img class="ava ava-statistic" src="https://imglf3.lf127.net/img/bUJweUhHV2xURE8zR2ZQdXR0a1dleWx6bXhyWnhvMEp5MktlWUtnd0ppTVJ1VDhhNWVvMEF3PT0.jpg"></img>
+				</a>
+				<a class="name ava-statistic f-thide" target="_blank" href="https://harakokougaku.lofter.com">Harakoの光学部屋</a>
+				<span class="time">2019-08-25</span>
+			</div>
+
+			<div class="nav-desc">原子的「天体観測」列表，收錄了全年各月份最適觀測的142個深空天體（以北緯23.5°為觀測地點），并詳細記載了這些天體所在的星座、赤經赤緯、視星等、視徑。</div>
+			<div class="long-text">
+				<p>原子的「天体観測」列表，收錄了全年各月份最適觀測的142個深空天體（以北緯23.5&deg;為觀測地點），并詳細記載了這些天體所在的星座、赤經赤緯、視星等、視徑。收錄範圍包括梅西耶星表（Messier's Catalog）、星雲和星團新總表（the New General Catalogue of Nebulae and Clusters of Stars,&nbsp;NGC）、巴納德暗星雲表（Barnard's Catalog of Dark Nebulae）在內的多個著名深空天體列表。</p> 
+<p><img src="https://imglf4.lf127.net/img/bUJweUhHV2xURE9BQko5ZjFGWUIwdVhsaTBoZzBOdERNN0RNNDVydXVJN3dsaFBEQWVpd0VnPT0.jpg?imageView" style="max-width:500px;" /></p> 
+<p><img src="https://imglf6.lf127.net/img/bUJweUhHV2xURE9BQko5ZjFGWUIwb3JPdWppa2RROS9nNEdlQlpwVTh3RFpVNUNQakxlMG53PT0.jpg?imageView" style="max-width:500px;" /></p> 
+<p><img src="https://imglf3.lf127.net/img/bUJweUhHV2xURE9BQko5ZjFGWUIwc2cyZ3ZHaXJPUHd2Vi95aG82SmtsRE5TQTZhR2M2SUJRPT0.jpg?imageView" style="max-width:500px;" /></p>
+			</div>
+			<div class="post">
+				<div class="tag-wrapper" id="tag-wrapper" onclick="loft.m.mvp.g.doTagStatistic(this,event);">
+								<a class="tag" href="//www.lofter.com/tag/摄影" target="_blank"># 摄影</a>
+								<a class="tag" href="//www.lofter.com/tag/光学" target="_blank"># 光学</a>
+								<a class="tag" href="//www.lofter.com/tag/天文" target="_blank"># 天文</a>
+								<a class="tag" href="//www.lofter.com/tag/长文章" target="_blank"># 长文章</a>
+				</div>
+				<div class="copyright"><span class="icon icon-copyright"></span><span class="txt">版权归作者所有，转载请注明出处</span></div>
+				<div class="author" onclick="loft.m.mvp.g.doAuthorStatistic(this,event);">
+					<a class="lnk ava-statistic" target="_blank" href="https://harakokougaku.lofter.com"><img class="avatar ava-statistic" src="https://imglf3.lf127.net/img/bUJweUhHV2xURE8zR2ZQdXR0a1dleWx6bXhyWnhvMEp5MktlWUtnd0ppTVJ1VDhhNWVvMEF3PT0.jpg" /></a>
+					<a class="name ava-statistic" target="_blank" href="https://harakokougaku.lofter.com">Harakoの光学部屋</a>
+					<a class="btn-fol " id="btn-fol" style="display:none;" >关注</a>
+				</div>
+				<div id="act-area" class="act-area">
+					<a class="btn-like btn-likd" id="btn-like"><span class="f-iblock icon icon-like" id="icon-like"></span><span class="f-iblock txt">热度 4</span></a>
+					<div class="line"></div>
+					<a class="btn-comment" id="btn-comment"><span class="f-iblock icon icon-comment"></span><span class="f-iblock txt">评论 0</span></a>
+					<div class="line1"></div>
+					<a class="btn-share" id="btn-share"><span class="icon icon-share"></span><span class="txt">分享</span></a>
+				</div>
+			</div>
+		</div>
+
+		<div class="m-recom">
+			<div class="intro">推荐文章</div>
+			<ul class="u-post-list">
+				<li class="item f-cb"  >
+					<div class="l-area">
+						<a href="https://www.lofter.com/lpost/1cca26b2_1c67fb88b">
+							<div class="tit f-thide">2014-10-19【光學研究-高階】Harako影像處理系統</div>
+							<div class="desc">【光學研究】的內容最早於2012年開始編寫，記錄了長久以來積累的攝影理論知識和實踐經驗，已於2014年10月匯總整理成完整的系統架構...</div>
+						</a>
+						<div class="author f-cb">
+							<a class="lnk" target="_blank" href="https://harakokougaku.lofter.com"><img class="avatar" src="https://imglf3.lf127.net/img/bUJweUhHV2xURE8zR2ZQdXR0a1dleWx6bXhyWnhvMEp5MktlWUtnd0ppTVJ1VDhhNWVvMEF3PT0.jpg?imageView&amp;thumbnail=64y64&amp;enlarge=1&amp;quality=90&amp;type=jpg" /></a>
+							<a class="name" target="_blank" href="https://harakokougaku.lofter.com">Harakoの光学部屋</a>
+						</div>
+					</div>
+					<div class="r-area"><a href="https://harakokougaku.lofter.com"><img src="https://imglf6.lf127.net/img/cf1008764b312e64/bUJweUhHV2xURE1tVFZBdWV1RGxNS2wwK282OSswK0R0Q0huaENpRjJJdz0.jpg?imageView&amp;thumbnail=240y160&amp;enlarge=1&amp;quality=90&amp;type=jpg" /></a></div>
+				</li>
+				<li class="item f-cb"  >
+					<div class="l-area">
+						<a href="https://www.lofter.com/lpost/1f1fd225_117ce6a8">
+							<div class="tit f-thide">好好的唱片封面，被小伙伴儿们画跑题了</div>
+							<div class="desc">经常看一些外国友人拿经典图像进行推翻式的重塑，就像美国著名的山姆大叔那样，不知衍生出来多少个版本，一些创意人甚至融入了自己的风格。这...</div>
+						</a>
+						<div class="author f-cb">
+							<a class="lnk" target="_blank" href="https://harakokougaku.lofter.com"><img class="avatar" src="https://imglf3.lf127.net/img/Tk80YjhKb0xNM3RZS3N4NFJwTkVVQlYydDdnVUVtUCtZOE42NEhQL25lR3lHbGNSNXpaNFVRPT0.jpg?imageView&amp;thumbnail=64y64&amp;enlarge=1&amp;quality=90&amp;type=jpg" /></a>
+							<a class="name" target="_blank" href="https://harakokougaku.lofter.com">ROOM114</a>
+						</div>
+					</div>
+					<div class="r-area"><a href="https://harakokougaku.lofter.com"><img src="https://imglf3.lf127.net/img/VFlrRFo1dE0yU2t1V1JRclkvQnRsOWcvNEVMN3RvZzlsamVnVFZjRTk2aGRhVldhOFRjTFZBPT0.jpg?imageView&amp;thumbnail=240y160&amp;enlarge=1&amp;quality=90&amp;type=jpg" /></a></div>
+				</li>
+				<li class="item f-cb" style="border-bottom:none;" >
+					<div class="l-area">
+						<a href="https://www.lofter.com/lpost/1f1fd225_117ce642">
+							<div class="tit f-thide">照片上的霹雳舞 #1</div>
+							<div class="desc">照片涂鸦是一个在Room114主理人个人微信朋友圈开展的开放活动。某天他会在上午发布一张开放版权的照片，并配有规则文字，说明如何在照...</div>
+						</a>
+						<div class="author f-cb">
+							<a class="lnk" target="_blank" href="https://harakokougaku.lofter.com"><img class="avatar" src="https://imglf3.lf127.net/img/Tk80YjhKb0xNM3RZS3N4NFJwTkVVQlYydDdnVUVtUCtZOE42NEhQL25lR3lHbGNSNXpaNFVRPT0.jpg?imageView&amp;thumbnail=64y64&amp;enlarge=1&amp;quality=90&amp;type=jpg" /></a>
+							<a class="name" target="_blank" href="https://harakokougaku.lofter.com">ROOM114</a>
+						</div>
+					</div>
+					<div class="r-area"><a href="https://harakokougaku.lofter.com"><img src="https://imglf5.lf127.net/img/VFlrRFo1dE0yU2tNdGFrZjJwYkNQbHdyeGxIYU94UUxKaEVuMlI1YVkyTkhSR0xiS1IyMkRnPT0.jpg?imageView&amp;thumbnail=240y160&amp;enlarge=1&amp;quality=90&amp;type=jpg" /></a></div>
+				</li>
+			</ul>
+			<div style="display:none;" id="btn-allComment" class="btn-allComment">查看更多</div>
+			<div class="show-comment-num">
+				<span>评论(0)</span>
+			</div>
+			<iframe id="comment_frame" name="comment_frame" allowtransparency="true" width="648" height="300" scrolling="no" frameborder="0" style="background-color:transparent; overflow:hidden;" src="//www.lofter.com/comment.do?pid=7625235317&amp;bid=483010226&amp;listlinkcolor=6CA516&amp;listtipcolor=333&amp;listcontentcolor=333"></iframe>
+		</div>
+		</div>
+<div id="lofter-common-page-footer"></div>
+<script type="text/javascript">
+if (!window.lofterUISdkPreregister) {
+window.lofterUISdkPreregister = [];
+}
+try {
+window.lofterUISdkPreregister.push([
+'page-footer',
+{
+container: '#lofter-common-page-footer'
+}
+]);
+} catch (e){}
+</script>
+<div class="g-ft" style="display:none;">
+  <div class="m-ft2"><a target="_blank" rel="nofollow" href="//www.lofter.com/contact">联系我们</a><span>|</span><a target="_blank" rel="nofollow" href="https://i.lofter.com/tag/招聘">招贤纳士</a><span>|</span><a target="_blank" rel="nofollow" href="//www.lofter.com/app">移动客户端</a><span>|</span><a target="_blank" rel="nofollow" href="//www.lofter.com/themes">风格模板</a><span>|</span><a target="_blank" rel="nofollow" href="https://i.lofter.com">官方博客</a><span>|</span><a target="_blank" rel="nofollow" href="/front/homesite/agreement/reporting-infringements">侵权投诉 Reporting Infringements</a><span>|</span><a target="_blank" rel="nofollow" href="/front/customer-service/#/feedback/1000493">未成年人有害信息举报 0571-89852053</a><span>|</span><a target="_blank" rel="nofollow" href="//www.lofter.com/cms/149754/sheqi.html">涉企举报专区</a></div>
+  <div style="margin-top:10px;">
+    <span>网易公司版权所有　&copy;1997-2026　</span>
+    <a rel="nofollow" target="_blank" href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=33010802010186" style="position:relative;">
+      <img src="//l.bst.126.net/rsc/img/icon-police.png" style="width:14px;height:16px;position:absolute;left:0;top:0;" />
+      <span style="margin-left:18px;">浙公网安备 33010802010186号</span>
+    </a>
+    <a
+      rel="noreferrer"
+      target="_blank"
+      href="https://beian.miit.gov.cn/"
+      style="margin-left:20px;"
+    >浙ICP备16011220号-11</a>
+    <a
+      rel="noreferrer"
+      target="_blank"
+      href="https://lofter.lf127.net/1628238083285/zengzhidianxinyewujingyingxukezheng.png"
+      style="margin-left:20px;"
+    >增值电信业务经营许可证：浙B2-20160599</a>
+  </div>
+  <div style="margin-top:10px;">
+    <a rel="nofollow" target="_blank" href="https://lofter.lf127.net/1670295977367/shuiyin-hangzhouwangyiyuanqikejiyouxiangongsi-wenwangwenxinzhengzhengben-2022nian5yue30rizhi2025nian5yue29ri-jinxianyongyuLOFTERwangzhanliangzhaoshiyong.pdf"><span>网络文化经营许可证： 浙网文[2022]1208-054号</span></a>
+    <a rel="nofollow" target="_blank" href="//www.lofter.com/businessentity" style="margin-left:20px;"><span>自营经营者信息</span></a>
+    <a rel="nofollow" target="_blank" href="http://beian.miit.gov.cn/" style="margin-left:20px;"><span>工业和信息化部备案管理系统网站</span></a>
+    <a rel="nofollow" target="_blank" href="http://jbts.mct.gov.cn/" style="margin-left:20px;"><span>12318全国文化市场举报网站</span></a>
+  </div>
+  <div style="margin-top:10px;">
+    <a rel="nofollow" target="_blank" href="https://beian.cac.gov.cn/#/searchResult"><span>网信算备330108093980202220015号</span></a>
+    <a rel="nofollow" target="_blank" href="https://beian.cac.gov.cn/#/searchResult" style="margin-left:20px;"><span>网信算备330108093980204230011号</span></a>
+  </div>
+</div>
+
+	<div class="cover f-dn" id="cover"><a class="btn-close-ly icon" id="btn-close-ly"></a></div>
+	<div class="layer f-dn" id="layer" style="height: 443px;">
+		<div class="tlt" id="tlt">分享到</div>
+		<div class="cnt f-cb">
+			<div class="l-cnt"><img src="" id="qrcode"><img src="//l.bst.126.net/rsc/img/active/mvp/wechat.png" class="wechat-icon"></div>
+			<div class="r1-cnt">
+				<a class="icon-share icon-share-weibo" id="icon-share-weibo"></a>
+				<a class="icon-share icon-share-baidutieba" id="icon-share-baidutieba"></a>
+			</div>
+			<div class="r2-cnt">
+				<a class="icon-share icon-share-qqzone" id="icon-share-qqzone"></a>
+				<a class="icon-share icon-share-yixin" id="icon-share-yixin"></a>
+				<div id="share-wrapper" class="share-wrapper"><img src="" alt="" class="share-code" id="share-code" width="110px" height="110px"></div>
+			</div>
+		</div>
+		<div class="cnt1" style="display:block;" >
+			<a id="reblogLink" href="https://www.lofter.com/?type=REBLOG&amp;permalink=1cca26b2_1c67fdb75#redirectTo=https://harakokougaku.lofter.com/post/1cca26b2_1c67fdb75">
+				<span class="cnt1-icon"></span>
+				<span class="cnt1-txt">转载我的主页</span>
+			<a>
+		</div>
+	</div>
+
+	<div class="w-pagelayer w-pagelayer-reglogin w-pagelayer-reglogin2 f-dn" id="w-pagelayer-reglogin2">
+		<div class="pagelayer ztag" style="z-index: 2000;">
+			<div class="lyloading a-scale ztag "></div>
+			<div class="ztag" style="visibility: visible;opacity: 0.8;background-color: rgb(0, 0, 0);height:100%;">&nbsp;</div>
+			<div class="lyscroll ztag">
+				<a href="#" class="lyclosed ztag" id="btn-lyclosed" style="display: block;"></a>
+				<div class="lybody ztag">
+					<div class="lycont a-scale ztag  a-scale-do" style="padding-top: 287px;">
+						<div class="m-reglogin"> <a id="closereglogin2" class="close" href="#" style="display: none; visibility: visible;"><span>关闭</span></a>
+								<div class="iframewrap">
+										<iframe width="1080" height="600" frameborder="0" border="0" scrolling="no" marginheight="0" marginwidth="0" allowtransparency="true" src="//www.lofter.com/loginiframe?type=2&amp;from=personalPage&amp;target=https://qatest5.lofter.com/post/647f4c9_c437342&amp;from=mvp"></iframe>
+								</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+<script type="text/javascript">
+
+location.dwr= location.protocol + '//www.lofter.com/dwr';
+location.hosturl =  location.protocol + '//www.lofter.com';
+location.dirhost = 'https://l.bst.126.net';
+location.cloudMusicFlashUrl = 'https://s1.music.126.net/style/swf/LofterMusicPlayer.swf?005';
+
+location.f110 = 'https://l.bst.126.net/rsc/img/ava/110.png';
+
+
+Date.servTime = '09/17/2026 17:08:29';
+
+window.CF = {
+debugMode:false,
+testDBMode:false,
+devSourceMode:false,
+visitor:{
+userId:483010226,
+email:'gpnlich@163.com',
+mainBlogId:483010226,
+isFromMobile:'',
+isForbidUser:false,
+isEditor:false
+}
+};
+window.CF.visitor.visitorEmail = 'gpnlich@163.com';
+
+CF.blogs = [];
+CF.blogs.push({blogId:483010226,
+role:10,
+blogName:'harakokougaku',
+blogNickName:'Harakoの光学部屋',
+bigAvaImg: 'https://imglf3.lf127.net/img/bUJweUhHV2xURE8zR2ZQdXR0a1dleWx6bXhyWnhvMEp5MktlWUtnd0ppTVJ1VDhhNWVvMEF3PT0.jpg',
+newNoticeCount: 9,
+newResponseNoticeCount: 0,
+newRecommendNoticeCount: 0,
+newActivityTagNoticeCount: 0,
+newArtNoticeCount: 0
+});
+window.CF.visitor.blogName = 'harakokougaku';
+window.CF.visitor.blogNickName = 'Harakoの光学部屋';
+window.CF.visitor.bigAvaImg = 'https://imglf3.lf127.net/img/bUJweUhHV2xURE8zR2ZQdXR0a1dleWx6bXhyWnhvMEp5MktlWUtnd0ppTVJ1VDhhNWVvMEF3PT0.jpg';
+window.CF.mainBlog = {blogId:483010226,
+blogName:'harakokougaku',
+blogNickName:'Harakoの光学部屋',
+bigAvaImg:'https://imglf3.lf127.net/img/bUJweUhHV2xURE8zR2ZQdXR0a1dleWx6bXhyWnhvMEp5MktlWUtnd0ppTVJ1VDhhNWVvMEF3PT0.jpg'};
+window.userSignedIn = {
+userId:483010226,
+email:'gpnlich@163.com',
+blogName:'harakokougaku',
+blogId:483010226
+}
+
+
+var _gaq = _gaq || [];
+
+
+(function() {
+var ua = window.navigator.userAgent.toLowerCase();
+
+var loadtiming2js = function(){
+var timing2 = document.createElement('script');
+timing2.type = 'text/javascript';
+timing2.async = true;
+timing2.src = '//nos.netease.com/doc/timing3.js';
+
+var _handler = function(){
+if(!_handler.isExeced){
+_handler.isExeced = true;
+var body = document.getElementsByTagName('body')[0];
+body.appendChild(timing2);
+}
+};
+
+if (!!document.addEventListener) {
+document.body.addEventListener('load',_handler, false);
+} else{
+document.body.attachEvent('onload',_handler);
+}
+
+setTimeout(_handler,8000);
+};
+
+if(ua.indexOf('ipad') != -1 && window.isInDashboard ) {
+setTimeout(loadtiming2js,500);
+}
+
+})();
+
+(function() {
+var ua = window.navigator.userAgent.toLowerCase();
+var loadvcloudjs = function(){
+var snode = document.createElement('script');
+snode.type = 'text/javascript';
+snode.async = true;
+snode.src = '//easyreadfs.nosdn.127.net/lofter/vcloud-band-test.a32d1b82002e8ccb42045f69d2937193.js';
+
+var _handler = function(){
+if(!_handler.isExeced){
+_handler.isExeced = true;
+var body = document.getElementsByTagName('body')[0];
+body.appendChild(snode);
+}
+};
+
+if (!!document.addEventListener) {
+document.body.addEventListener('load',_handler, false);
+} else{
+document.body.attachEvent('onload',_handler);
+}
+
+setTimeout(_handler,8000);
+};
+
+if(window.isInDashboard ) {
+setTimeout(loadvcloudjs,500);
+}
+})();
+
+(function() {
+var testDBMode = window.CF.testDBMode;
+var loadlogDistributeJs = function(){
+var snode = document.createElement('script');
+snode.type = 'text/javascript';
+snode.async = true;
+snode.src = '//lofter.lf127.net/1629255716511/nw.log.distribution.iife.js';
+snode.onload = function(){
+var instance = new NWLogDistribution.HubLog({
+userId: window.userSignedIn && window.userSignedIn.userId ? window.userSignedIn.userId : '',
+key: 'MA-BFD7-963BF6846668',
+k: 'lofter',
+env: !!testDBMode ? NWLogDistribution.ENV.ST : NWLogDistribution.ENV.HB
+});
+
+// 防刷打点
+instance.capture('pc9_527', {
+category: 'uv',
+url: location.href
+})
+};
+var _handler = function(){
+if(!_handler.isExeced){
+_handler.isExeced = true;
+var body = document.getElementsByTagName('body')[0];
+body.appendChild(snode);
+}
+};
+
+if (!!document.addEventListener) {
+document.body.addEventListener('load',_handler, false);
+} else{
+document.body.attachEvent('onload',_handler);
+}
+
+setTimeout(_handler,1000);
+};
+
+loadlogDistributeJs();
+})();
+
+</script>
+
+<script src="https://lofter.lf127.net/1667220634500/core-js-stable.3.6.5.mini.js"></script>
+<script src="https://l.bst.126.net/front/ui-sdk/sdk/auto.js?v=1"></script>
+<script type="text/javascript" src="https://lofter.lf127.net/1638843379949/nos-js-web.0.1.4.js"></script>
+<script type="text/javascript" src="https://lofter.lf127.net/nos-upload-cli/1727350894016/nos-js-web.global.js"></script>
+<script src="https://acstatic-dun.126.net/tool.min.js?t=201903281201"></script>
+<script src="https://lofter.lf127.net/1649748088641/captcha.js"></script>
+
+  <div style="display:none;"  class="fa-init">	  <textarea rows="1" cols="1" name="js" >this.p={forbidShare:1,headLine:&quot;&quot;,hotCount:4,favoriteCount:4,isFavor:false,isFollow:false,author:'Harakoの光学部屋'}</textarea>
+
+  <textarea rows="1" cols="1" name="jst" id="m-track-jst-flash">    <div class="third-flash-video" style="">
+    <object width="${width}" height="${height}" classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=10,0,0,0"><param name="movie" value="${src}"><param name="allowFullScreen" value="true"><param name="isAutoPlay" value="true"><param name="wmode" value="transparent"><param name="quality" value="high"><param name="flashvars" value="${flashvars|escape}"><embed width="${width}" height="${height}" src="${src}" flashvars="${flashvars|escape}"  allowfullscreen="true" menu="false" wmode="transparent" quality="high" pluginspage="http://www.adobe.com/shockwave/download/download.cgi?P1_Prod_Version=ShockwaveFlash" type="application/x-shockwave-flash"></object>
+    </div>
+</textarea>
+
+  <textarea rows="1" cols="1" name="jst" id="m-track-jst-ht5video">    <div class="ht5video">
+        <video id="my-video" class="video-js" x-webkit-airplay="allow" webkit-playsinline controls poster="${imgsrc}" preload="auto" width="500" height="500">
+        </video>
+        <span class="w-cover w-cover-p ${vtag} f-dn"></span>
+    </div>
+</textarea>
+
+  <textarea rows="1" cols="1" name="jst" id="m-track-jst-loftflash">    <div class="flashvideo">
+        <object width="100%" height="100%" classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=9,0,28,0">
+            <param name="movie" value="https://www.lofter.com/rsc/swf/video/lofterVideoPlayer.swf">
+            <param name="wmode" value="transparent">
+            <param name="quality" value="high">
+            <param name="allowFullScreen" value="true">
+            <param name="flashvars" value="controlbar=none&skin=https://www.lofter.com/rsc/swf/video/skin/skin.zip&file=${src}&image=${imgsrc}&autostart=true&repeat=always">
+            <embed width="100%" height="100%"  src="//www.lofter.com/rsc/swf/video/lofterVideoPlayer.swf" flashvars="controlbar=none&skin=https://www.lofter.com/rsc/swf/video/skin/skin.zip&file=${src}&image=${imgsrc}&autostart=true&repeat=always" allowFullScreen="true" menu="false" wmode="transparent" quality="high" pluginspage="http://www.adobe.com/shockwave/download/download.cgi?P1_Prod_Version=ShockwaveFlash" type="application/x-shockwave-flash">
+        </object>
+    </div>
+</textarea>
+</div>
+
+<script src="//l.bst.126.net/s/core.js?ce6f147133be8cb5449daea814850b52" type="text/javascript"></script><script src="//l.bst.126.net/s/pt_page_longpost_longpost.js?e53ff8f9665f25e0a77b06a81268fe1d" type="text/javascript"></script>
+</body>
+</html>
