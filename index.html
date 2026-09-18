@@ -68,7 +68,7 @@
       rgba(4, 8, 26, 0.78) 72%, var(--bg) 100%);
   }
 
-  .hero-inner, .hero-credit {
+  .hero-inner {
     position: relative;
     z-index: 1;
     max-width: 1280px;
@@ -96,13 +96,13 @@
 
   .hero p.lede {
     margin: 18px 0 0;
-    max-width: 62ch;
+    max-width: 72ch;
     color: #c6d3f0;
     font-size: clamp(13px, 1.7vw, 16px);
     text-shadow: 0 1px 14px rgba(0, 0, 0, 0.8);
   }
 
-  .hero-credit { margin-top: 26px; font-size: 12px; color: #8fa2cd; }
+  .hero p.lede + p.lede { margin-top: 10px; }
 
   /* ---------- Layout ---------- */
   main {
@@ -479,17 +479,15 @@
   <div class="hero-inner">
     <p class="eyebrow">Deep Sky &middot; 142 Objects &middot; 12 Months</p>
     <h1>天体観測<span class="romaji">「Tentai Kansoku」</span>Catalogue</h1>
-    <p class="lede">各月份最適觀測深空天體列表 —— 依赤經排序的 142 個深空天體，
-       可逐欄篩選月份、星等、視徑、名稱、赤經、赤緯與星座。</p>
+    <p class="lede">由Harako整理的「天体観測」列表，按月份整理了最適觀測的142個深空天體，可逐欄篩選月份、星等、視徑、名稱、赤經、赤緯與星座。</p>
+    <p class="lede">收錄範圍包括梅西耶星表（Messier's Catalog）、星雲和星團新總表（the New General Catalogue of Nebulae and Clusters of Stars, NGC）、巴納德暗星雲表（Barnard's Catalog of Dark Nebulae）在內的多個著名深空天體列表。</p>
   </div>
-  <p class="hero-credit">Header: “The aPeriodic Table of Messier Objects” — photographs by Mike Keith, May 2012 – Apr 2013.</p>
 </header>
 
 <main>
 
   <section aria-labelledby="cat-h">
     <h2 id="cat-h">各月份最適觀測深空天體列表</h2>
-    <p class="section-note">資料來源：天体観測「Tentai Kansoku」Catalogue.xlsx — 工作表「天体观测」。</p>
 
     <div class="legend">
       <div class="legend-card" style="--accent: var(--ok)">
