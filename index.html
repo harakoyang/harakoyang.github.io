@@ -535,10 +535,10 @@
     position: absolute;
     left: 50%;
     top: 50%;
+    width: 100%;
+    height: calc(100% - var(--lb-bar, 0px));
     max-width: 100%;
     max-height: calc(100% - var(--lb-bar, 0px));
-    width: auto;
-    height: auto;
     object-fit: contain;
     transform-origin: center center;
     user-select: none;
@@ -1403,7 +1403,7 @@
     $("stats").innerHTML = [
       ["", rows.length + "<small> / " + OBJECTS.length + "</small>", "目前顯示", ""],
       ["is-ok", suitable, "最適觀測", "suitable"],
-      ["is-bad", outside, "緯度外天區", "dec"]
+      ["is-bad", outside, "緯度外天區", ""]
     ].map(function (s) {
       var q = s[3] ? ' data-quick="' + s[3] + '"' : "";
       return '<div class="stat ' + s[0] + '"' + q + '><b>' + s[1] + "</b><span>" + s[2] + "</span></div>";
