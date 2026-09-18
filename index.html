@@ -445,6 +445,7 @@
       gap: 12px;
       padding: 8px 14px;
       border-bottom: 0;
+      align-items: center;
     }
 
     tbody td::before {
@@ -452,10 +453,19 @@
       font-size: 11px;
       letter-spacing: 0.1em;
       color: var(--muted);
-      align-self: center;
     }
 
+    .cell-val { min-width: 0; }
+
     tbody td.name { padding-top: 13px; min-width: 0; }
+    tbody td.name .cell-val {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px 8px;
+    }
+    tbody td.name .desig { margin-bottom: 0; }
+    tbody td.con { white-space: nowrap; }
     tbody td:last-child { padding-bottom: 13px; }
     tbody tr:hover td { background: none; }
     tbody tr:hover td.mark-ok { background: var(--ok-bg); }
@@ -1039,7 +1049,7 @@
   /* ---------- Render ---------- */
 
   function cell(label, value, cls) {
-    return '<td class="' + cls + '" data-label="' + esc(label) + '">' + value + "</td>";
+    return '<td class="' + cls + '" data-label="' + esc(label) + '"><div class="cell-val">' + value + "</div></td>";
   }
 
   function nameCell(o) {
@@ -1065,7 +1075,7 @@
         cell("RA", esc(o.raText), "num") +
         cell("DEC", esc(o.decText), "num" + (decOk(o) ? "" : " mark-bad")) +
         cell("星座", '<span class="con-abbr">' + esc(o.con) + '</span> ' +
-                     '<span class="con-name">' + esc(o.conName) + "</span>", "") +
+                     '<span class="con-name">' + esc(o.conName) + "</span>", "con") +
       "</tr>";
     }).join("");
 
