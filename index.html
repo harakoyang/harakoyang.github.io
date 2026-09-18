@@ -506,10 +506,11 @@
     min-height: 0;
     overflow: hidden;
     background: rgba(2, 6, 18, 0.92);
-    cursor: grab;
+    cursor: default;
     touch-action: none;
   }
-  .lb-stage.is-dragging { cursor: grabbing; }
+  .lb-stage.is-zoomable { cursor: grab; }
+  .lb-stage.is-zoomable.is-dragging { cursor: grabbing; }
   #lb-img {
     display: block;
     position: absolute;
@@ -1429,6 +1430,33 @@
     $("lightbox").style.setProperty("--lb-bar", bar + "px");
     $("lb-img").style.transform =
       "translate(-50%, -50%) translate(" + lb.x + "px, " + (lb.y - bar / 2) + "px) scale(" + lb.scale + ")";
+    $("lb-stage").classList.toggle("is-zoomable", lb.scale > 1);
+  }
+
+  // Keep the zoomed image within the stage so no background shows through.
+  function lbClamp() {
+    var img = $("lb-img");
+    var stage = $("lb-stage");
+    var sw = stage.clientWidth;
+    var sh = stage.clientHeight;
+    var iw = img.naturalWidth || 0;
+    var ih = img.naturalHeight || 0;
+    var scaledW = iw * lb.scale;
+    var scaledH = ih * lb.scale;
+    var bar = document.querySelector(".lb-ui").offsetHeight;
+
+    if (scaledW <= sw) {
+      lb.x = 0;
+    } else {
+      var maxX = (scaledW - sw) / 2;
+      lb.x = Math.max(-maxX, Math.min(maxX, lb.x));
+    }
+    if (scaledH <= sh) {
+      lb.y = 0;
+    } else {
+      var maxY = (scaledH - sh) / 2;
+      lb.y = Math.max(bar / 2 - maxY, Math.min(bar / 2 + maxY, lb.y));
+    }
   }
 
   function lbResetView() {
@@ -1449,6 +1477,7 @@
     }
     lb.scale = next;
     if (lb.scale === 1) { lb.x = 0; lb.y = 0; }
+    lbClamp();
     lbApply();
     syncZoomUi();
   }
@@ -1466,7 +1495,7 @@
     var caption = obj ? objectCaption(obj) : (img.title || "");
     $("lb-img").src = img.full;
     $("lb-img").alt = caption;
-    $("lb-title").textContent = (img.title ? img.title + " · " : "") + caption;
+    $("lb-title").textContent = caption;
     var credit = $("lb-credit");
     credit.textContent = img.credit ? "圖片：" + img.credit : "";
     credit.hidden = !img.credit;
@@ -1537,28 +1566,31 @@
 
     stage.addEventListener("pointerdown", function (e) {
       if (e.target.id !== "lb-img" && e.target !== stage) return;
-      lb.drag = true;
       lb.px = e.clientX;
       lb.py = e.clientY;
       lb.sx = lb.x;
       lb.sy = lb.y;
-      stage.classList.add("is-dragging");
-      stage.setPointerCapture(e.pointerId);
+      // Only drag when zoomed in; otherwise the pointerup acts as a click-to-close.
+      lb.drag = lb.scale > 1;
+      if (lb.drag) stage.classList.add("is-dragging");
+      try { stage.setPointerCapture(e.pointerId); } catch (err) {}
     });
     stage.addEventListener("pointermove", function (e) {
       if (!lb.drag) return;
       lb.x = lb.sx + (e.clientX - lb.px);
       lb.y = lb.sy + (e.clientY - lb.py);
+      lbClamp();
       lbApply();
     });
     function endDrag(e) {
-      if (!lb.drag) return;
-      var moved = Math.hypot(e.clientX - lb.px, e.clientY - lb.py);
+      var wasDragging = lb.drag;
       lb.drag = false;
       stage.classList.remove("is-dragging");
       try { stage.releasePointerCapture(e.pointerId); } catch (err) {}
-      // A pointerup without meaningful drag is a click → close the lightbox.
-      if (moved < 5) lbClose();
+      // Close on a click (not zoomed, or a drag without meaningful movement).
+      if (!wasDragging || Math.hypot(e.clientX - lb.px, e.clientY - lb.py) < 5) {
+        lbClose();
+      }
     }
     stage.addEventListener("pointerup", endDrag);
     stage.addEventListener("pointercancel", endDrag);
@@ -1579,6 +1611,7 @@
       var dist = Math.hypot(dx, dy);
       lb.scale = Math.min(8, Math.max(1, lb.pinchScale * (dist / lb.pinch)));
       if (lb.scale === 1) { lb.x = 0; lb.y = 0; }
+      lbClamp();
       lbApply();
       syncZoomUi();
     }, { passive: false });
