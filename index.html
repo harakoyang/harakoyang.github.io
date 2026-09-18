@@ -505,7 +505,10 @@
     flex: 1;
     min-height: 0;
     overflow: hidden;
-    background: rgba(2, 6, 18, 0.92);
+    background-color: rgba(2, 6, 18, 0.92);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
     cursor: default;
     touch-action: none;
   }
@@ -1519,9 +1522,16 @@
     var obj = OBJECTS[i];
     var caption = obj ? objectCaption(obj) : (img.title || "");
     var lbImg = $("lb-img");
+    var stage = $("lb-stage");
+    // Show the (already-cached) thumbnail stretched as a placeholder so the
+    // old image never lingers while the full image loads. No thumb -> empty.
+    stage.style.backgroundImage = img.thumb ? "url(" + JSON.stringify(img.thumb) + ")" : "none";
+    // Drop the previous image immediately; the full image paints over the
+    // placeholder once it is ready.
+    lbImg.removeAttribute("src");
     lbImg.src = img.full;
     lbImg.alt = caption;
-    $("lb-stage").classList.add("is-loading");
+    stage.classList.add("is-loading");
     $("lb-title").textContent = caption;
     var credit = $("lb-credit");
     credit.textContent = img.credit ? "圖片：" + img.credit : "";
@@ -1549,7 +1559,9 @@
     if (lb.clickTimer) { clearTimeout(lb.clickTimer); lb.clickTimer = null; }
     if (lb.indicatorTimer) { clearTimeout(lb.indicatorTimer); lb.indicatorTimer = null; }
     $("lb-indicator").classList.remove("is-visible");
-    $("lb-stage").classList.remove("is-loading");
+    var stage = $("lb-stage");
+    stage.classList.remove("is-loading");
+    stage.style.backgroundImage = "none";
     $("lightbox").hidden = true;
     $("lb-img").removeAttribute("src");
     document.body.style.overflow = "";
@@ -1577,7 +1589,9 @@
     // load (an earlier image that finished after we switched away) must
     // not reset the view or hide the spinner for the new image.
     $("lb-img").addEventListener("load", function () {
-      if (!$("lb-img").src || new URL($("lb-img").src, location.href).href !== new URL(lb.currentSrc, location.href).href) return;
+      var lbImg = $("lb-img");
+      if (!lbImg.src || new URL(lbImg.src, location.href).href !== new URL(lb.currentSrc, location.href).href) return;
+      $("lb-stage").style.backgroundImage = "none";
       $("lb-stage").classList.remove("is-loading");
       lbResetView();
     });
