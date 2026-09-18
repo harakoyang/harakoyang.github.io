@@ -536,22 +536,21 @@
     z-index: 3;
   }
   @keyframes lb-spin { to { transform: rotate(360deg); } }
-  #lb-img, #lb-placeholder {
+  #lb-img {
     display: block;
     position: absolute;
     left: 50%;
     top: 50%;
     width: 100%;
-    height: 100%;
+    height: calc(100% - var(--lb-bar, 0px));
     max-width: 100%;
-    max-height: 100%;
+    max-height: calc(100% - var(--lb-bar, 0px));
     object-fit: contain;
     transform-origin: center center;
     user-select: none;
     -webkit-user-drag: none;
+    z-index: 2;
   }
-  #lb-placeholder { z-index: 1; }
-  #lb-img { z-index: 2; }
   /* Floats over the photo, so the glass actually reads as translucent. */
   .lb-ui {
     position: absolute;
@@ -870,7 +869,6 @@
 <div id="lightbox" style="--lb-bar: 0px;" hidden="">
   <div class="lb-stage" id="lb-stage">
     <div class="lb-viewport">
-      <img id="lb-placeholder" alt="" referrerpolicy="no-referrer" style="display:none;">
       <img id="lb-img" alt="IC2948 IC2944 · 奔雞星雲 半人馬座λ星雲" referrerpolicy="no-referrer" style="transform: translate(-50%, -50%) translate(0px, 0px) scale(1);">
       <div class="lb-indicator" id="lb-indicator"></div>
     </div>
@@ -1447,15 +1445,15 @@
   function lbApply() {
     var bar = document.querySelector(".lb-ui").offsetHeight;
     $("lightbox").style.setProperty("--lb-bar", bar + "px");
-    // The viewport already sits above the bar, so the image is centered in
-    // the viewport — no extra bar offset needed in the transform.
-    var t = "translate(-50%, -50%) translate(" + lb.x + "px, " + lb.y + "px) scale(" + lb.scale + ")";
+    // The image box is `100% - bar` tall and centered on the stage; shift it
+    // up by bar/2 so at scale 1 it sits exactly above the bottom bar. When
+    // zoomed it grows from that center and runs under the translucent bar.
+    var t = "translate(-50%, -50%) translate(" + lb.x + "px, " + (lb.y - bar / 2) + "px) scale(" + lb.scale + ")";
     $("lb-img").style.transform = t;
-    $("lb-placeholder").style.transform = t;
     $("lb-stage").classList.toggle("is-zoomable", lb.scale > 1);
   }
 
-  // Keep the zoomed image within the viewport.
+  // Keep the zoomed image within the stage.
   function lbClamp() {
     var img = $("lb-img");
     var stage = $("lb-stage");
@@ -1465,6 +1463,7 @@
     var ih = img.naturalHeight || 0;
     var scaledW = iw * lb.scale;
     var scaledH = ih * lb.scale;
+    var bar = document.querySelector(".lb-ui").offsetHeight;
 
     if (scaledW <= sw) {
       lb.x = 0;
@@ -1476,7 +1475,7 @@
       lb.y = 0;
     } else {
       var maxY = (scaledH - sh) / 2;
-      lb.y = Math.max(-maxY, Math.min(maxY, lb.y));
+      lb.y = Math.max(bar / 2 - maxY, Math.min(bar / 2 + maxY, lb.y));
     }
   }
 
@@ -1546,21 +1545,18 @@
     var obj = OBJECTS[i];
     var caption = obj ? objectCaption(obj) : (img.title || "");
     var lbImg = $("lb-img");
-    var ph = $("lb-placeholder");
     var stage = $("lb-stage");
-    // Show the (already-cached) thumbnail in a sibling that shares the exact
-    // same box + transform as the full image, so there is no jump when the
-    // full image paints over it. No thumb -> just the empty stage.
-    if (img.thumb) { ph.src = img.thumb; ph.style.display = ""; }
-    else { ph.removeAttribute("src"); ph.style.display = "none"; }
-    // Hide the previous full image immediately so the new thumbnail shows
-    // through at once; the full image paints over the placeholder once ready.
-    // (Use inline display — the CSS `display:block` would override `hidden`.)
-    lbImg.style.display = "none";
-    lbImg.removeAttribute("src");
-    lbImg.src = img.full;
+    // Show the (cached) thumbnail instantly on the SAME element that will
+    // hold the full image — one box, one transform, no chance of the two
+    // ever being misaligned. Then swap to the full image once it is ready.
+    lbImg.src = img.thumb || img.full;
     lbImg.alt = caption;
     stage.classList.add("is-loading");
+    if (img.thumb && img.full !== img.thumb) {
+      var pre = new Image();
+      pre.onload = function () { if (lb.currentSrc === img.full) lbImg.src = img.full; };
+      pre.src = img.full;
+    }
     $("lb-title").textContent = caption;
     var credit = $("lb-credit");
     credit.textContent = img.credit ? "圖片：" + img.credit : "";
@@ -1579,6 +1575,9 @@
     lbResetView();
     $("lightbox").hidden = false;
     document.body.style.overflow = "hidden";
+    // Push a history entry so the browser Back button closes the lightbox
+    // instead of leaving the page.
+    history.pushState({lb: true}, "");
   }
 
   function lbClose() {
@@ -1588,13 +1587,16 @@
     if (lb.clickTimer) { clearTimeout(lb.clickTimer); lb.clickTimer = null; }
     if (lb.indicatorTimer) { clearTimeout(lb.indicatorTimer); lb.indicatorTimer = null; }
     $("lb-indicator").classList.remove("is-visible");
-    var stage = $("lb-stage");
-    stage.classList.remove("is-loading");
-    $("lb-placeholder").style.display = "none";
-    $("lb-img").style.display = "";
+    $("lb-stage").classList.remove("is-loading");
     $("lightbox").hidden = true;
     $("lb-img").removeAttribute("src");
     document.body.style.overflow = "";
+    // If we still own the top history entry, pop it so the URL/back state
+    // stays consistent. (When close was triggered by the user pressing
+    // Back, the entry is already gone and history.state won't be ours.)
+    if (history.state && history.state.lb) {
+      history.back();
+    }
   }
 
   function bindLightbox() {
@@ -1615,14 +1617,13 @@
       btn.parentNode.replaceChild(span, btn);
     }, true);
 
-    // Only react to the load of the image currently being shown. A stale
-    // load (an earlier image that finished after we switched away) must
-    // not reset the view or hide the spinner for the new image.
+    // Only react to the load of the full image currently being shown. The
+    // thumbnail load is ignored (currentSrc points at the full URL). A stale
+    // load (an earlier image that finished after we switched away) must not
+    // reset the view or hide the spinner for the new image.
     $("lb-img").addEventListener("load", function () {
       var lbImg = $("lb-img");
       if (!lbImg.src || new URL(lbImg.src, location.href).href !== new URL(lb.currentSrc, location.href).href) return;
-      lbImg.style.display = "";
-      $("lb-placeholder").style.display = "none";
       $("lb-stage").classList.remove("is-loading");
       lbResetView();
     });
@@ -1630,6 +1631,8 @@
       $("lb-stage").classList.remove("is-loading");
     });
     window.addEventListener("resize", function () { if (lb.open) lbApply(); });
+    // Browser Back closes the lightbox instead of leaving the page.
+    window.addEventListener("popstate", function () { if (lb.open) lbClose(); });
 
     document.addEventListener("keydown", function (e) {
       if (!lb.open) return;
@@ -1643,7 +1646,10 @@
       if (!lb.open) return;
       e.preventDefault();
       var rect = stage.getBoundingClientRect();
-      lbZoom(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX - rect.left - rect.width / 2, e.clientY - rect.top - rect.height / 2);
+      var bar = document.querySelector(".lb-ui").offsetHeight;
+      // The image's natural center is shifted up by bar/2 (see lbApply), so
+      // map the cursor Y into the image's offset coordinate space.
+      lbZoom(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX - rect.left - rect.width / 2, e.clientY - rect.top - rect.height / 2 + bar / 2);
     }, { passive: false });
 
     // Show the position indicator while the pointer is over the stage,
