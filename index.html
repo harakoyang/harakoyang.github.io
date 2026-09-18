@@ -559,34 +559,24 @@
   }
   .lb-close:hover { background: rgba(140, 170, 230, 0.28); }
   .lb-close:focus-visible { outline: 2px solid var(--ok); outline-offset: 2px; }
-  .lb-tools { display: flex; gap: 8px; }
-  .lb-tools button {
-    min-width: 40px;
-    height: 36px;
-    padding: 0 10px;
+  .lb-indicator {
+    position: absolute;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: rgba(6, 12, 30, 0.82);
     border: 1px solid var(--line);
-    border-radius: 8px;
-    background: transparent;
-    color: var(--text);
-    cursor: pointer;
-    transition: background .15s, border-color .15s, color .15s;
-  }
-  .lb-tools button:not(:disabled):hover {
-    background: rgba(140, 170, 230, 0.18);
-    border-color: var(--line-strong);
-  }
-  .lb-tools button:not(:disabled):active {
-    background: rgba(140, 170, 230, 0.3);
-  }
-  .lb-tools button:disabled {
-    opacity: 0.35;
-    cursor: default;
     color: var(--muted);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s;
+    z-index: 2;
   }
-  .lb-tools button:disabled:hover {
-    background: transparent;
-    border-color: var(--line);
-  }
+  .lb-indicator.is-visible { opacity: 1; }
   .lb-caption { min-width: 0; flex: 1; }
   #lb-title { font-size: 14px; }
   #lb-credit {
@@ -871,13 +861,9 @@
   <div class="lb-stage" id="lb-stage">
     <img id="lb-img" alt="IC2948 IC2944 · 奔雞星雲 半人馬座λ星雲" referrerpolicy="no-referrer" style="transform: translate(-50%, -50%) translate(0px, 0px) scale(1);">
     <button type="button" class="lb-close" id="lb-close" aria-label="關閉大圖" title="關閉（Esc）">×</button>
+    <div class="lb-indicator" id="lb-indicator"></div>
   </div>
   <div class="lb-ui">
-    <div class="lb-tools">
-      <button type="button" id="lb-zoom-out" aria-label="縮小">−</button>
-      <button type="button" id="lb-zoom-in" aria-label="放大">+</button>
-      <button type="button" id="lb-zoom-reset">1×</button>
-    </div>
     <div class="lb-caption">
       <div id="lb-title">IC 2944 · IC2948 IC2944 · 奔雞星雲 半人馬座λ星雲</div>
       <div id="lb-credit">圖片：Wikipedia / Wikimedia Commons</div>
@@ -1412,16 +1398,20 @@
 
   var lb = {
     open: false,
+    index: 0,
     scale: 1,
     x: 0,
     y: 0,
     drag: false,
+    dragged: false,
     px: 0,
     py: 0,
     sx: 0,
     sy: 0,
     pinch: 0,
-    pinchScale: 1
+    pinchScale: 1,
+    clickTimer: null,
+    indicatorTimer: null
   };
 
   function lbApply() {
@@ -1464,7 +1454,6 @@
     lb.x = 0;
     lb.y = 0;
     lbApply();
-    syncZoomUi();
   }
 
   function lbZoom(factor, cx, cy) {
@@ -1479,18 +1468,48 @@
     if (lb.scale === 1) { lb.x = 0; lb.y = 0; }
     lbClamp();
     lbApply();
-    syncZoomUi();
   }
 
-  function syncZoomUi() {
-    $("lb-zoom-out").disabled = lb.scale <= 1;
-    $("lb-zoom-in").disabled = lb.scale >= 8;
-    $("lb-zoom-reset").disabled = lb.scale <= 1;
+  // Indices of objects that actually have a full image to display.
+  function lbImageIndices() {
+    var out = [];
+    for (var i = 0; i < OBJECTS.length; i++) {
+      var img = IMAGES[i] || IMAGES[String(i)];
+      if (img && img.full) out.push(i);
+    }
+    return out;
+  }
+
+  function lbNav(dir) {
+    if (lb.scale > 1) return;
+    var indices = lbImageIndices();
+    if (indices.length === 0) return;
+    var pos = indices.indexOf(lb.index);
+    if (pos === -1) pos = 0;
+    var next = (pos + dir + indices.length) % indices.length;
+    lbOpen(indices[next]);
+  }
+
+  function lbUpdateIndicator() {
+    var indices = lbImageIndices();
+    var pos = indices.indexOf(lb.index);
+    $("lb-indicator").textContent = (pos + 1) + " / " + indices.length;
+  }
+
+  function lbShowIndicator() {
+    var el = $("lb-indicator");
+    el.classList.add("is-visible");
+    if (lb.indicatorTimer) clearTimeout(lb.indicatorTimer);
+    lb.indicatorTimer = setTimeout(function () {
+      el.classList.remove("is-visible");
+      lb.indicatorTimer = null;
+    }, 3000);
   }
 
   function lbOpen(i) {
     var img = IMAGES[i] || IMAGES[String(i)];
     if (!img || !img.full) return;
+    lb.index = i;
     var obj = OBJECTS[i];
     var caption = obj ? objectCaption(obj) : (img.title || "");
     $("lb-img").src = img.full;
@@ -1508,6 +1527,7 @@
       src.hidden = true;
     }
     lb.open = true;
+    lbUpdateIndicator();
     lbResetView();
     $("lightbox").hidden = false;
     document.body.style.overflow = "hidden";
@@ -1518,6 +1538,9 @@
     if (!lb.open) return;
     lb.open = false;
     lb.drag = false;
+    if (lb.clickTimer) { clearTimeout(lb.clickTimer); lb.clickTimer = null; }
+    if (lb.indicatorTimer) { clearTimeout(lb.indicatorTimer); lb.indicatorTimer = null; }
+    $("lb-indicator").classList.remove("is-visible");
     $("lightbox").hidden = true;
     $("lb-img").removeAttribute("src");
     document.body.style.overflow = "";
@@ -1543,17 +1566,13 @@
 
     $("lb-img").addEventListener("load", lbResetView);
     window.addEventListener("resize", function () { if (lb.open) lbApply(); });
-    $("lb-zoom-in").addEventListener("click", function () { lbZoom(1.25); });
-    $("lb-zoom-out").addEventListener("click", function () { lbZoom(1 / 1.25); });
-    $("lb-zoom-reset").addEventListener("click", lbResetView);
     $("lb-close").addEventListener("click", lbClose);
 
     document.addEventListener("keydown", function (e) {
       if (!lb.open) return;
       if (e.key === "Escape") lbClose();
-      if (e.key === "+" || e.key === "=") lbZoom(1.25);
-      if (e.key === "-" || e.key === "_") lbZoom(1 / 1.25);
-      if (e.key === "0") lbResetView();
+      if (e.key === "ArrowLeft") { e.preventDefault(); lbNav(-1); }
+      if (e.key === "ArrowRight") { e.preventDefault(); lbNav(1); }
     });
 
     var stage = $("lb-stage");
@@ -1564,36 +1583,67 @@
       lbZoom(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX - rect.left - rect.width / 2, e.clientY - rect.top - rect.height / 2);
     }, { passive: false });
 
+    // Show the position indicator while the pointer is over the stage,
+    // auto-hide 3s after the last movement.
+    stage.addEventListener("mousemove", function () {
+      if (lb.open) lbShowIndicator();
+    });
+
     stage.addEventListener("pointerdown", function (e) {
       if (e.target.id !== "lb-img" && e.target !== stage) return;
       lb.px = e.clientX;
       lb.py = e.clientY;
       lb.sx = lb.x;
       lb.sy = lb.y;
-      // Only drag when zoomed in; otherwise the pointerup acts as a click-to-close.
+      lb.dragged = false;
+      // Only drag-pan when zoomed in; at scale 1 the gesture is tap or swipe.
       lb.drag = lb.scale > 1;
       if (lb.drag) stage.classList.add("is-dragging");
       try { stage.setPointerCapture(e.pointerId); } catch (err) {}
     });
     stage.addEventListener("pointermove", function (e) {
-      if (!lb.drag) return;
-      lb.x = lb.sx + (e.clientX - lb.px);
-      lb.y = lb.sy + (e.clientY - lb.py);
-      lbClamp();
-      lbApply();
+      if (lb.drag) {
+        lb.x = lb.sx + (e.clientX - lb.px);
+        lb.y = lb.sy + (e.clientY - lb.py);
+        lbClamp();
+        lbApply();
+      } else if (lb.scale === 1 && !lb.dragged) {
+        var dx = e.clientX - lb.px;
+        var dy = e.clientY - lb.py;
+        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+          lb.dragged = true; // mark as swipe so the click handler won't close
+        }
+      }
     });
     function endDrag(e) {
       var wasDragging = lb.drag;
       lb.drag = false;
       stage.classList.remove("is-dragging");
       try { stage.releasePointerCapture(e.pointerId); } catch (err) {}
-      // Close on a click (not zoomed, or a drag without meaningful movement).
-      if (!wasDragging || Math.hypot(e.clientX - lb.px, e.clientY - lb.py) < 5) {
-        lbClose();
+      // At scale 1, a horizontal swipe navigates to the previous/next object.
+      if (!wasDragging && lb.scale === 1 && lb.dragged) {
+        var dx = e.clientX - lb.px;
+        lbNav(dx < 0 ? 1 : -1);
       }
     }
     stage.addEventListener("pointerup", endDrag);
     stage.addEventListener("pointercancel", endDrag);
+
+    // Single click closes; double click resets the view.
+    stage.addEventListener("click", function (e) {
+      if (e.target.closest("button, a")) return;
+      if (lb.dragged) { lb.dragged = false; return; }
+      if (lb.clickTimer) return; // second click of a double-click; dblclick handles it
+      lb.clickTimer = setTimeout(function () {
+        lb.clickTimer = null;
+        lbClose();
+      }, 250);
+    });
+    stage.addEventListener("dblclick", function (e) {
+      if (e.target.closest("button, a")) return;
+      if (lb.clickTimer) { clearTimeout(lb.clickTimer); lb.clickTimer = null; }
+      lbResetView();
+    });
 
     stage.addEventListener("touchstart", function (e) {
       if (e.touches.length === 2) {
@@ -1613,7 +1663,6 @@
       if (lb.scale === 1) { lb.x = 0; lb.y = 0; }
       lbClamp();
       lbApply();
-      syncZoomUi();
     }, { passive: false });
   }
 
