@@ -1,6 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
+<html lang="zh-Hant"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>天体観測「Tentai Kansoku」Catalogue</title>
@@ -230,7 +229,14 @@
     border-radius: 10px;
   }
   .chip.reset svg { width: 16px; height: 16px; }
-  .chip.reset:hover { color: var(--text); border-style: solid; background: rgba(140, 170, 230, 0.16); }
+  .chip.reset:not(:disabled):hover { color: var(--text); border-style: solid; background: rgba(140, 170, 230, 0.16); }
+  .chip.reset:disabled { opacity: 0.4; cursor: default; }
+  .chip.reset:disabled:hover {
+    color: var(--muted);
+    border-color: var(--line);
+    border-style: dashed;
+    background: none;
+  }
 
   .chip.reset::after {
     content: attr(data-tip);
@@ -248,7 +254,7 @@
     pointer-events: none;
     transition: opacity .15s;
   }
-  .chip.reset:hover::after,
+  .chip.reset:not(:disabled):hover::after,
   .chip.reset:focus-visible::after { opacity: 1; }
 
   /* ---------- Filter bar ---------- */
@@ -462,7 +468,7 @@
     border-radius: 8px;
     overflow: hidden;
     background: #070d22;
-    cursor: zoom-in;
+    cursor: pointer;
   }
   .thumb-btn img {
     display: block;
@@ -500,10 +506,11 @@
     min-height: 0;
     overflow: hidden;
     background: rgba(2, 6, 18, 0.92);
-    cursor: grab;
+    cursor: default;
     touch-action: none;
   }
-  .lb-stage.is-dragging { cursor: grabbing; }
+  .lb-stage.is-zoomable { cursor: grab; }
+  .lb-stage.is-zoomable.is-dragging { cursor: grabbing; }
   #lb-img {
     display: block;
     position: absolute;
@@ -562,8 +569,24 @@
     background: transparent;
     color: var(--text);
     cursor: pointer;
+    transition: background .15s, border-color .15s, color .15s;
   }
-  .lb-tools button:hover { border-color: var(--line-strong); }
+  .lb-tools button:not(:disabled):hover {
+    background: rgba(140, 170, 230, 0.18);
+    border-color: var(--line-strong);
+  }
+  .lb-tools button:not(:disabled):active {
+    background: rgba(140, 170, 230, 0.3);
+  }
+  .lb-tools button:disabled {
+    opacity: 0.35;
+    cursor: default;
+    color: var(--muted);
+  }
+  .lb-tools button:disabled:hover {
+    background: transparent;
+    border-color: var(--line);
+  }
   .lb-caption { min-width: 0; flex: 1; }
   #lb-title { font-size: 14px; }
   #lb-credit {
@@ -687,7 +710,6 @@
 
 <header class="hero">
   <div class="hero-inner">
-    <p class="eyebrow">Deep Sky &middot; 142 Objects &middot; 12 Months</p>
     <h1 lang="ja">天体観測<span class="romaji">「Tentai Kansoku」</span>Catalogue</h1>
     <p class="lede">由Harako整理的「天体観測」列表，列舉了各月份最適觀測深空天體（共142個），可按需篩選月份、星等、視徑、名稱、赤經、赤緯與星座。</p>
     <p class="lede">收錄範圍包括梅西耶星表（Messier's Catalog）、星雲和星團新總表（the New General Catalogue of Nebulae and Clusters of Stars, NGC）、巴納德暗星雲表（Barnard's Catalog of Dark Nebulae）在內的多個著名深空天體列表。</p>
@@ -712,7 +734,7 @@
             <input type="number" id="size-th" value="30" step="5" min="1" max="1200">
             <span>′</span>
           </span>
-          <span>= <span class="crit-value" id="size-window"></span></span>
+          <span>= <span class="crit-value" id="size-window">0°30′</span></span>
         </div>
       </div>
       <div class="legend-card" style="--accent: var(--bad)">
@@ -725,20 +747,20 @@
             <input type="number" id="lat" value="23.5" step="0.5" min="-90" max="90" aria-describedby="lat-window">
             <span>°</span>
           </span>
-          <span>適宜赤緯 <span class="crit-value" id="lat-window"></span></span>
+          <span>適宜赤緯 <span class="crit-value" id="lat-window">−21°30′ 至 +68°30′</span></span>
         </div>
       </div>
     </div>
 
     <div class="quick" id="quick">
       <button class="chip" data-quick="suitable" data-tone="ok" aria-pressed="false">最適觀測（三項全符合）</button>
-      <button class="chip" data-quick="mag" data-tone="ok" aria-pressed="false"></button>
-      <button class="chip" data-quick="size" data-tone="ok" aria-pressed="false"></button>
+      <button class="chip" data-quick="mag" data-tone="ok" aria-pressed="false">星等 ≤ 9.5</button>
+      <button class="chip" data-quick="size" data-tone="ok" aria-pressed="false">視徑 ≥ 0°30′</button>
       <button class="chip" data-quick="dec" data-tone="bad" aria-pressed="false">排除紅色天區</button>
       <button class="chip reset" id="reset" data-tip="重置全部篩選" aria-label="重置全部篩選">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
-          <path d="M19.2 3.8v3.4h-3.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path>
+          <path d="M19.2 3.8v3.4h-3.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path>
         </svg>
       </button>
     </div>
@@ -746,7 +768,7 @@
     <div class="filterbar" id="filterbar">
       <div class="field">
         <span class="field-name" id="f-month">月份</span>
-        <div class="ms" data-ms="month" aria-labelledby="f-month"></div>
+        <div class="ms" data-ms="month" aria-labelledby="f-month"><button type="button" class="ms-btn" aria-expanded="false" aria-haspopup="true"><span class="ms-text" style="">已選 3 項</span><span class="caret">▼</span></button><div class="ms-pop" hidden=""><div class="ms-actions"><button type="button" data-act="all">全選</button><button type="button" data-act="none">清除</button></div><div class="ms-list"><label><input type="checkbox" value="1"><span>一月</span><span class="count">28</span></label><label><input type="checkbox" value="2"><span>二月</span><span class="count">6</span></label><label><input type="checkbox" value="3"><span>三月</span><span class="count">3</span></label><label><input type="checkbox" value="4"><span>四月</span><span class="count">13</span></label><label><input type="checkbox" value="5"><span>五月</span><span class="count">4</span></label><label><input type="checkbox" value="6"><span>六月</span><span class="count">9</span></label><label><input type="checkbox" value="7"><span>七月</span><span class="count">13</span></label><label><input type="checkbox" value="8"><span>八月</span><span class="count">19</span></label><label><input type="checkbox" value="9"><span>九月</span><span class="count">16</span></label><label><input type="checkbox" value="10"><span>十月</span><span class="count">12</span></label><label><input type="checkbox" value="11"><span>十一月</span><span class="count">6</span></label><label><input type="checkbox" value="12"><span>十二月</span><span class="count">13</span></label></div></div></div>
       </div>
       <div class="field">
         <label for="mag-min">星等 Magnitude</label>
@@ -770,7 +792,7 @@
       </div>
       <div class="field">
         <span class="field-name" id="f-cat">所屬星表</span>
-        <div class="ms" data-ms="cat" aria-labelledby="f-cat"></div>
+        <div class="ms" data-ms="cat" aria-labelledby="f-cat"><button type="button" class="ms-btn" aria-expanded="false" aria-haspopup="true"><span class="ms-text" style="color: var(--muted);">全部星表</span><span class="caret">▼</span></button><div class="ms-pop" hidden=""><div class="ms-actions"><button type="button" data-act="all">全選</button><button type="button" data-act="none">清除</button></div><div class="ms-list"><label><input type="checkbox" value="M"><span>M</span><span class="count">25</span></label><label><input type="checkbox" value="NGC"><span>NGC</span><span class="count">60</span></label><label><input type="checkbox" value="IC"><span>IC</span><span class="count">26</span></label><label><input type="checkbox" value="LDN"><span>LDN</span><span class="count">1</span></label><label><input type="checkbox" value="LBN"><span>LBN</span><span class="count">1</span></label><label><input type="checkbox" value="Sh 2"><span>Sh 2</span><span class="count">16</span></label><label><input type="checkbox" value="Barnard"><span>Barnard</span><span class="count">8</span></label><label><input type="checkbox" value="vdB"><span>vdB</span><span class="count">2</span></label><label><input type="checkbox" value="HIP"><span>HIP</span><span class="count">4</span></label><label><input type="checkbox" value="DWB"><span>DWB</span><span class="count">1</span></label></div></div></div>
       </div>
       <div class="field">
         <label for="ra-min">RA 赤經（時 h）</label>
@@ -790,32 +812,32 @@
       </div>
       <div class="field">
         <span class="field-name" id="f-con">星座</span>
-        <div class="ms" data-ms="con" aria-labelledby="f-con"></div>
+        <div class="ms" data-ms="con" aria-labelledby="f-con"><button type="button" class="ms-btn" aria-expanded="false" aria-haspopup="true"><span class="ms-text" style="color: var(--muted);">全部星座</span><span class="caret">▼</span></button><div class="ms-pop" hidden=""><div class="ms-actions"><button type="button" data-act="all">全選</button><button type="button" data-act="none">清除</button></div><div class="ms-list"><label><input type="checkbox" value="And"><span>And 仙女座</span><span class="count">1</span></label><label><input type="checkbox" value="Aqr"><span>Aqr 水瓶座</span><span class="count">1</span></label><label><input type="checkbox" value="Ara"><span>Ara 天壇座</span><span class="count">2</span></label><label><input type="checkbox" value="Aur"><span>Aur 御夫座</span><span class="count">5</span></label><label><input type="checkbox" value="Cam"><span>Cam 鹿豹座</span><span class="count">3</span></label><label><input type="checkbox" value="Car"><span>Car 船底座</span><span class="count">1</span></label><label><input type="checkbox" value="Cas"><span>Cas 仙后座</span><span class="count">9</span></label><label><input type="checkbox" value="Cen"><span>Cen 半人馬座</span><span class="count">3</span></label><label><input type="checkbox" value="Cep"><span>Cep 仙王座</span><span class="count">12</span></label><label><input type="checkbox" value="Com"><span>Com 后髮座</span><span class="count">4</span></label><label><input type="checkbox" value="CrA"><span>CrA 南冕座</span><span class="count">1</span></label><label><input type="checkbox" value="Cru"><span>Cru 南十字座</span><span class="count">1</span></label><label><input type="checkbox" value="Crv"><span>Crv 烏鴉座</span><span class="count">1</span></label><label><input type="checkbox" value="CVn"><span>CVn 獵犬座</span><span class="count">4</span></label><label><input type="checkbox" value="Cyg"><span>Cyg 天鵝座</span><span class="count">14</span></label><label><input type="checkbox" value="Dor"><span>Dor 劍魚座</span><span class="count">2</span></label><label><input type="checkbox" value="Dra"><span>Dra 天龍座</span><span class="count">1</span></label><label><input type="checkbox" value="Eri"><span>Eri 波江座</span><span class="count">1</span></label><label><input type="checkbox" value="Gem"><span>Gem 雙子座</span><span class="count">3</span></label><label><input type="checkbox" value="Her"><span>Her 武仙座</span><span class="count">1</span></label><label><input type="checkbox" value="Hya"><span>Hya 長蛇座</span><span class="count">1</span></label><label><input type="checkbox" value="Lac"><span>Lac 蝎虎座</span><span class="count">1</span></label><label><input type="checkbox" value="Leo"><span>Leo 獅子座</span><span class="count">2</span></label><label><input type="checkbox" value="Lib"><span>Lib 天秤座</span><span class="count">1</span></label><label><input type="checkbox" value="Lyr"><span>Lyr 天琴座</span><span class="count">1</span></label><label><input type="checkbox" value="Mon"><span>Mon 麒麟座</span><span class="count">6</span></label><label><input type="checkbox" value="Oph"><span>Oph 蛇夫座</span><span class="count">1</span></label><label><input type="checkbox" value="Ori"><span>Ori 獵戶座</span><span class="count">14</span></label><label><input type="checkbox" value="Peg"><span>Peg 飛馬座</span><span class="count">2</span></label><label><input type="checkbox" value="Per"><span>Per 英仙座</span><span class="count">7</span></label><label><input type="checkbox" value="Pup"><span>Pup 船尾座</span><span class="count">1</span></label><label><input type="checkbox" value="Scl"><span>Scl 玉夫座</span><span class="count">2</span></label><label><input type="checkbox" value="Sco"><span>Sco 天蠍座</span><span class="count">6</span></label><label><input type="checkbox" value="Sct"><span>Sct 盾牌座</span><span class="count">1</span></label><label><input type="checkbox" value="Ser"><span>Ser 巨蛇座</span><span class="count">1</span></label><label><input type="checkbox" value="Sge"><span>Sge 天箭座</span><span class="count">1</span></label><label><input type="checkbox" value="Sgr"><span>Sgr 人馬座</span><span class="count">8</span></label><label><input type="checkbox" value="Tau"><span>Tau 金牛座</span><span class="count">7</span></label><label><input type="checkbox" value="Tri"><span>Tri 三角座</span><span class="count">1</span></label><label><input type="checkbox" value="Tuc"><span>Tuc 杜鵑座</span><span class="count">2</span></label><label><input type="checkbox" value="UMa"><span>UMa 大熊座</span><span class="count">2</span></label><label><input type="checkbox" value="Vel"><span>Vel 船帆座</span><span class="count">2</span></label><label><input type="checkbox" value="Vul"><span>Vul 狐狸座</span><span class="count">2</span></label></div></div></div>
       </div>
       <div class="field">
         <label for="sort">排序</label>
-        <select id="sort"></select>
+        <select id="sort"><option value="i|1">原始順序（月份 · 赤經）</option><option value="month|1">月份 ↑</option><option value="month|-1">月份 ↓</option><option value="name|1">名稱 ↑</option><option value="name|-1">名稱 ↓</option><option value="mag|1">星等 ↑</option><option value="mag|-1">星等 ↓</option><option value="size|1">視徑 ↑</option><option value="size|-1">視徑 ↓</option><option value="ra|1">RA ↑</option><option value="ra|-1">RA ↓</option><option value="dec|1">DEC ↑</option><option value="dec|-1">DEC ↓</option><option value="con|1">星座 ↑</option><option value="con|-1">星座 ↓</option></select>
       </div>
     </div>
 
-    <div class="stats" id="stats"></div>
+    <div class="stats" id="stats"><div class="stat "><b>22<small> / 142</small></b><span>目前顯示</span></div><div class="stat is-ok"><b>2</b><span>最適觀測</span></div><div class="stat is-bad"><b>8</b><span>緯度外天區</span></div></div>
 
     <div class="tablewrap">
       <table>
         <thead>
-          <tr id="thead-row"></tr>
+          <tr id="thead-row"><th scope="col" data-key="month" aria-sort="descending"><button type="button" class="sorter" data-key="month">月份<span class="arrow">▼</span></button></th><th scope="col" data-key="photo" class="th-photo">圖片</th><th scope="col" data-key="name"><button type="button" class="sorter" data-key="name">名稱<span class="arrow"></span></button></th><th scope="col" data-key="mag"><button type="button" class="sorter" data-key="mag">星等<span class="arrow"></span></button></th><th scope="col" data-key="size"><button type="button" class="sorter" data-key="size">視徑<span class="arrow"></span></button></th><th scope="col" data-key="ra"><button type="button" class="sorter" data-key="ra">RA<span class="arrow"></span></button></th><th scope="col" data-key="dec"><button type="button" class="sorter" data-key="dec">DEC<span class="arrow"></span></button></th><th scope="col" data-key="con"><button type="button" class="sorter" data-key="con">星座<span class="arrow"></span></button></th></tr>
         </thead>
-        <tbody id="tbody"></tbody>
+        <tbody id="tbody"><tr><td class="month" data-label="月份"><div class="cell-val">四月</div></td><td class="photo" data-label="圖片"><div class="cell-val"><span class="thumb-empty" title="圖片載入失敗"></span></div></td><td class="name" data-label="名稱"><div class="cell-val"><div class="desig"><b>NGC3521</b></div><div class="label">星系</div></div></td><td class="num mark-ok" data-label="星等"><div class="cell-val">8.9</div></td><td class="num" data-label="視徑"><div class="cell-val">0°10'</div></td><td class="num" data-label="RA"><div class="cell-val">11h 05m 49s</div></td><td class="num" data-label="DEC"><div class="cell-val">-00°02'13"</div></td><td class="con" data-label="星座"><div class="cell-val"><span class="con-abbr">Leo</span> <span class="con-name">獅子座</span></div></td></tr><tr><td class="month" data-label="月份"><div class="cell-val">四月</div></td><td class="photo" data-label="圖片"><div class="cell-val"><button type="button" class="thumb-btn" data-photo-i="38" aria-label="查看大圖：NGC3628 M65 M66 · 獅子座三重星系"><img src="assets/photos/catalogue-038-thumb.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></button></div></td><td class="name" data-label="名稱"><div class="cell-val"><div class="desig"><b>NGC3628</b><b>M65</b><b>M66</b></div><div class="label">獅子座三重星系</div></div></td><td class="num mark-ok" data-label="星等"><div class="cell-val">9.5</div></td><td class="num mark-ok" data-label="視徑"><div class="cell-val">1°00'</div></td><td class="num" data-label="RA"><div class="cell-val">11h 20m 13s</div></td><td class="num" data-label="DEC"><div class="cell-val">+13°15'41"</div></td><td class="con" data-label="星座"><div class="cell-val"><span class="con-abbr">Leo</span> <span class="con-name">獅子座</span></div></td></tr><tr><td class="month" data-label="月份"><div class="cell-val">四月</div></td><td class="photo" data-label="圖片"><div class="cell-val"><button type="button" class="thumb-btn" data-photo-i="39" aria-label="查看大圖：IC2948 IC2944 · 奔雞星雲 半人馬座λ星雲"><img src="assets/photos/catalogue-039-thumb.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></button></div></td><td class="name" data-label="名稱"><div class="cell-val"><div class="desig"><b>IC2948</b><b>IC2944</b></div><div class="label">奔雞星雲 半人馬座λ星雲</div></div></td><td class="num mark-ok" data-label="星等"><div class="cell-val">4.5</div></td><td class="num mark-ok" data-label="視徑"><div class="cell-val">2°20'</div></td><td class="num" data-label="RA"><div class="cell-val">11h 39m 56s</div></td><td class="num mark-bad" data-label="DEC"><div class="cell-val">-63°32'00"</div></td><td class="con" data-label="星座"><div class="cell-val"><span class="con-abbr">Cen</span> <span class="con-name">半人馬座</span></div></td></tr><tr><td class="month" data-label="月份"><div class="cell-val">四月</div></td><td class="photo" data-label="圖片"><div class="cell-val"><button type="button" class="thumb-btn" data-photo-i="40" aria-label="查看大圖：NGC4038 · 觸鬚星系"><img src="assets/photos/catalogue-040-thumb.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></button></div></td><td class="name" data-label="名稱"><div class="cell-val"><div class="desig"><b>NGC4038</b></div><div class="label">觸鬚星系</div></div></td><td class="num" data-label="星等"><div class="cell-val">10.7</div></td><td class="num" data-label="視徑"><div class="cell-val">0°03'</div></td><td class="num" data-label="RA"><div class="cell-val">12h 02m 23s</div></td><td class="num" data-label="DEC"><div class="cell-val">-18°55'14"</div></td><td class="con" data-label="星座"><div class="cell-val"><span class="con-abbr">Crv</span> <span class="con-name">烏鴉座</span></div></td></tr><tr><td class="month" data-label="月份"><div class="cell-val">四月</div></td><td class="photo" data-label="圖片"><div class="cell-val"><button type="button" class="thumb-btn" data-photo-i="41" aria-label="查看大圖：NGC4236 · 星系"><img src="assets/photos/catalogue-041-thumb.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></button></div></td><td class="name" data-label="名稱"><div class="cell-val"><div class="desig"><b>NGC4236</b></div><div class="label">星系</div></div></td><td class="num" data-label="星等"><div class="cell-val">9.7</div></td><td class="num" data-label="視徑"><div class="cell-val">0°19'</div></td><td class="num" data-label="RA"><div class="cell-val">12h 17m 09s</div></td><td class="num mark-bad" data-label="DEC"><div class="cell-val">+69°24'36"</div></td><td class="con" data-label="星座"><div class="cell-val"><span class="con-abbr">Dra</span> <span class="con-name">天龍座</span></div></td></tr><tr><td class="month" data-label="月份"><div class="cell-val">四月</div></td><td class="photo" data-label="圖片"><div class="cell-val"><button type="button" class="thumb-btn" data-photo-i="42" aria-label="查看大圖：M106 · 漩渦星系"><img src="assets/photos/catalogue-042-thumb.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></button></div></td><td class="name" data-label="名稱"><div class="cell-val"><div class="desig"><b>M106</b></div><div class="label">漩渦星系</div></div></td><td class="num mark-ok" data-label="星等"><div class="cell-val">8.3</div></td><td class="num" data-label="視徑"><div class="cell-val">0°18'</div></td><td class="num" data-label="RA"><div class="cell-val">12h 19m 34s</div></td><td class="num" data-label="DEC"><div class="cell-val">+47°14'31"</div></td><td class="con" data-label="星座"><div class="cell-val"><span class="con-abbr">CVn</span> <span class="con-name">獵犬座</span></div></td></tr><tr><td class="month" data-label="月份"><div class="cell-val">四月</div></td><td class="photo" data-label="圖片"><div class="cell-val"><button type="button" class="thumb-btn" data-photo-i="43" aria-label="查看大圖：M84 M86 M88 · Markarian's Chain 馬卡良長鍊"><img src="assets/photos/catalogue-043-thumb.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></button></div></td><td class="name" data-label="名稱"><div class="cell-val"><div class="desig"><b>M84</b><b>M86</b><b>M88</b></div><div class="label">Markarian's Chain 馬卡良長鍊</div></div></td><td class="num mark-ok" data-label="星等"><div class="cell-val">9.5</div></td><td class="num mark-ok" data-label="視徑"><div class="cell-val">2°30'</div></td><td class="num" data-label="RA"><div class="cell-val">12h 28m 16s</div></td><td class="num" data-label="DEC"><div class="cell-val">+12°57'16"</div></td><td class="con" data-label="星座"><div class="cell-val"><span class="con-abbr">Com</span> <span class="con-name">后髮座</span></div></td></tr><tr><td class="month" data-label="月份"><div class="cell-val">四月</div></td><td class="photo" data-label="圖片"><div class="cell-val"><button type="button" class="thumb-btn" data-photo-i="44" aria-label="查看大圖：NGC4490 · 繭星系"><img src="assets/photos/catalogue-044-thumb.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></button></div></td><td class="name" data-label="名稱"><div class="cell-val"><div class="desig"><b>NGC4490</b></div><div class="label">繭星系</div></div></td><td class="num" data-label="星等"><div class="cell-val">9.8</div></td><td class="num" data-label="視徑"><div class="cell-val">0°06'</div></td><td class="num" data-label="RA"><div class="cell-val">12h 31m 12s</div></td><td class="num" data-label="DEC"><div class="cell-val">+41°34'39"</div></td><td class="con" data-label="星座"><div class="cell-val"><span class="con-abbr">CVn</span> <span class="con-name">獵犬座</span></div></td></tr><tr><td class="month" data-label="月份"><div class="cell-val">四月</div></td><td class="photo" data-label="圖片"><div class="cell-val"><span class="thumb-empty" title="圖片載入失敗"></span></div></td><td class="name" data-label="名稱"><div class="cell-val"><div class="label">Crux 南十字座 十字架星</div></div></td><td class="num mark-ok" data-label="星等"><div class="cell-val">1.5</div></td><td class="num mark-ok" data-label="視徑"><div class="cell-val">7°00'</div></td><td class="num" data-label="RA"><div class="cell-val">12h 32m 06s</div></td><td class="num mark-bad" data-label="DEC"><div class="cell-val">-57°12'22"</div></td><td class="con" data-label="星座"><div class="cell-val"><span class="con-abbr">Cru</span> <span class="con-name">南十字座</span></div></td></tr><tr><td class="month" data-label="月份"><div class="cell-val">四月</div></td><td class="photo" data-label="圖片"><div class="cell-val"><button type="button" class="thumb-btn" data-photo-i="46" aria-label="查看大圖：NGC4565 · 細針星系"><img src="assets/photos/catalogue-046-thumb.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></button></div></td><td class="name" data-label="名稱"><div class="cell-val"><div class="desig"><b>NGC4565</b></div><div class="label">細針星系</div></div></td><td class="num" data-label="星等"><div class="cell-val">9.6</div></td><td class="num" data-label="視徑"><div class="cell-val">0°16'</div></td><td class="num" data-label="RA"><div class="cell-val">12h 36m 50s</div></td><td class="num" data-label="DEC"><div class="cell-val">+25°56'05"</div></td><td class="con" data-label="星座"><div class="cell-val"><span class="con-abbr">Com</span> <span class="con-name">后髮座</span></div></td></tr><tr><td class="month" data-label="月份"><div class="cell-val">四月</div></td><td class="photo" data-label="圖片"><div class="cell-val"><button type="button" class="thumb-btn" data-photo-i="47" aria-label="查看大圖：NGC4631 · 鯨魚星系"><img src="assets/photos/catalogue-047-thumb.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></button></div></td><td class="name" data-label="名稱"><div class="cell-val"><div class="desig"><b>NGC4631</b></div><div class="label">鯨魚星系</div></div></td><td class="num mark-ok" data-label="星等"><div class="cell-val">9.3</div></td><td class="num" data-label="視徑"><div class="cell-val">0°15'</div></td><td class="num" data-label="RA"><div class="cell-val">12h 42m 36s</div></td><td class="num" data-label="DEC"><div class="cell-val">+32°29'23"</div></td><td class="con" data-label="星座"><div class="cell-val"><span class="con-abbr">CVn</span> <span class="con-name">獵犬座</span></div></td></tr><tr><td class="month" data-label="月份"><div class="cell-val">四月</div></td><td class="photo" data-label="圖片"><div class="cell-val"><button type="button" class="thumb-btn" data-photo-i="48" aria-label="查看大圖：M64 · 黑眼星系"><img src="assets/photos/catalogue-048-thumb.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></button></div></td><td class="name" data-label="名稱"><div class="cell-val"><div class="desig"><b>M64</b></div><div class="label">黑眼星系</div></div></td><td class="num mark-ok" data-label="星等"><div class="cell-val">8.5</div></td><td class="num" data-label="視徑"><div class="cell-val">0°09'</div></td><td class="num" data-label="RA"><div class="cell-val">12h 57m 13s</div></td><td class="num" data-label="DEC"><div class="cell-val">+21°37'49"</div></td><td class="con" data-label="星座"><div class="cell-val"><span class="con-abbr">Com</span> <span class="con-name">后髮座</span></div></td></tr><tr><td class="month" data-label="月份"><div class="cell-val">四月</div></td><td class="photo" data-label="圖片"><div class="cell-val"><button type="button" class="thumb-btn" data-photo-i="49" aria-label="查看大圖：NGC4889 NGC4874 · 后髮座星系團"><img src="assets/photos/catalogue-049-thumb.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></button></div></td><td class="name" data-label="名稱"><div class="cell-val"><div class="desig"><b>NGC4889</b><b>NGC4874</b></div><div class="label">后髮座星系團</div></div></td><td class="num" data-label="星等"><div class="cell-val">11.5</div></td><td class="num" data-label="視徑"><div class="cell-val">0°18'</div></td><td class="num" data-label="RA"><div class="cell-val">12h 59m 47s</div></td><td class="num" data-label="DEC"><div class="cell-val">+27°58'22"</div></td><td class="con" data-label="星座"><div class="cell-val"><span class="con-abbr">Com</span> <span class="con-name">后髮座</span></div></td></tr><tr><td class="month" data-label="月份"><div class="cell-val">三月</div></td><td class="photo" data-label="圖片"><div class="cell-val"><span class="thumb-empty" title="圖片載入失敗"></span></div></td><td class="name" data-label="名稱"><div class="cell-val"><div class="desig"><b>NGC2736</b></div><div class="label">Pencil Nebula 鉛筆星雲</div></div></td><td class="num" data-label="星等"><div class="cell-val">—</div></td><td class="num" data-label="視徑"><div class="cell-val">0°25'</div></td><td class="num" data-label="RA"><div class="cell-val">09h 00m 37s</div></td><td class="num mark-bad" data-label="DEC"><div class="cell-val">-45°59'24"</div></td><td class="con" data-label="星座"><div class="cell-val"><span class="con-abbr">Vel</span> <span class="con-name">船帆座</span></div></td></tr><tr><td class="month" data-label="月份"><div class="cell-val">三月</div></td><td class="photo" data-label="圖片"><div class="cell-val"><span class="thumb-empty" title="圖片載入失敗"></span></div></td><td class="name" data-label="名稱"><div class="cell-val"><div class="desig"><b>M81</b><b>M82</b></div><div class="label">Bode's Galaxy, Cigar Galaxy 波德星系 雪茄星系</div></div></td><td class="num mark-ok" data-label="星等"><div class="cell-val">6.9</div></td><td class="num mark-ok" data-label="視徑"><div class="cell-val">1°00'</div></td><td class="num" data-label="RA"><div class="cell-val">09h 56m 10s</div></td><td class="num mark-bad" data-label="DEC"><div class="cell-val">+69°21'00"</div></td><td class="con" data-label="星座"><div class="cell-val"><span class="con-abbr">UMa</span> <span class="con-name">大熊座</span></div></td></tr><tr><td class="month" data-label="月份"><div class="cell-val">三月</div></td><td class="photo" data-label="圖片"><div class="cell-val"><span class="thumb-empty" title="圖片載入失敗"></span></div></td><td class="name" data-label="名稱"><div class="cell-val"><div class="desig"><b>NGC3372</b></div><div class="label">船底座大星雲</div></div></td><td class="num mark-ok" data-label="星等"><div class="cell-val">2.5</div></td><td class="num mark-ok" data-label="視徑"><div class="cell-val">3°30'</div></td><td class="num" data-label="RA"><div class="cell-val">10h 44m 19s</div></td><td class="num mark-bad" data-label="DEC"><div class="cell-val">-59°55'39"</div></td><td class="con" data-label="星座"><div class="cell-val"><span class="con-abbr">Car</span> <span class="con-name">船底座</span></div></td></tr><tr><td class="month" data-label="月份"><div class="cell-val">二月</div></td><td class="photo" data-label="圖片"><div class="cell-val"><span class="thumb-empty" title="圖片載入失敗"></span></div></td><td class="name" data-label="名稱"><div class="cell-val"><div class="desig"><b>IC2177</b></div><div class="label">海鷗星雲</div></div></td><td class="num" data-label="星等"><div class="cell-val">—</div></td><td class="num mark-ok" data-label="視徑"><div class="cell-val">2°00'</div></td><td class="num" data-label="RA"><div class="cell-val">07h 05m 45s</div></td><td class="num" data-label="DEC"><div class="cell-val">-10°38'48"</div></td><td class="con" data-label="星座"><div class="cell-val"><span class="con-abbr">Mon</span> <span class="con-name">麒麟座</span></div></td></tr><tr><td class="month" data-label="月份"><div class="cell-val">二月</div></td><td class="photo" data-label="圖片"><div class="cell-val"><span class="thumb-empty" title="圖片載入失敗"></span></div></td><td class="name" data-label="名稱"><div class="cell-val"><div class="desig"><b>NGC2359</b></div><div class="label">雷神的頭盔</div></div></td><td class="num" data-label="星等"><div class="cell-val">11.5</div></td><td class="num" data-label="視徑"><div class="cell-val">0°08'</div></td><td class="num" data-label="RA"><div class="cell-val">07h 18m 56s</div></td><td class="num" data-label="DEC"><div class="cell-val">-13°14'40"</div></td><td class="con" data-label="星座"><div class="cell-val"><span class="con-abbr">Mon</span> <span class="con-name">麒麟座</span></div></td></tr><tr><td class="month" data-label="月份"><div class="cell-val">二月</div></td><td class="photo" data-label="圖片"><div class="cell-val"><span class="thumb-empty" title="圖片載入失敗"></span></div></td><td class="name" data-label="名稱"><div class="cell-val"><div class="desig"><b>Sh 2-274</b></div><div class="label">Medusa Nebula 蛇妖星雲</div></div></td><td class="num" data-label="星等"><div class="cell-val">16.0</div></td><td class="num" data-label="視徑"><div class="cell-val">0°12'</div></td><td class="num" data-label="RA"><div class="cell-val">07h 29m 00s</div></td><td class="num" data-label="DEC"><div class="cell-val">+13°14'46"</div></td><td class="con" data-label="星座"><div class="cell-val"><span class="con-abbr">Gem</span> <span class="con-name">雙子座</span></div></td></tr><tr><td class="month" data-label="月份"><div class="cell-val">二月</div></td><td class="photo" data-label="圖片"><div class="cell-val"><span class="thumb-empty" title="圖片載入失敗"></span></div></td><td class="name" data-label="名稱"><div class="cell-val"><div class="desig"><b>NGC2427</b><b>HIP36823</b></div><div class="label">The Hand of God, CG4上帝之手</div></div></td><td class="num" data-label="星等"><div class="cell-val">—</div></td><td class="num mark-ok" data-label="視徑"><div class="cell-val">5°00'</div></td><td class="num" data-label="RA"><div class="cell-val">07h 33m 42s</div></td><td class="num mark-bad" data-label="DEC"><div class="cell-val">-46°52'34"</div></td><td class="con" data-label="星座"><div class="cell-val"><span class="con-abbr">Pup</span> <span class="con-name">船尾座</span></div></td></tr><tr><td class="month" data-label="月份"><div class="cell-val">二月</div></td><td class="photo" data-label="圖片"><div class="cell-val"><span class="thumb-empty" title="圖片載入失敗"></span></div></td><td class="name" data-label="名稱"><div class="cell-val"><div class="desig"><b>NGC2403</b></div><div class="label">星系</div></div></td><td class="num mark-ok" data-label="星等"><div class="cell-val">8.4</div></td><td class="num" data-label="視徑"><div class="cell-val">0°18'</div></td><td class="num" data-label="RA"><div class="cell-val">07h 37m 58s</div></td><td class="num" data-label="DEC"><div class="cell-val">+65°34'21"</div></td><td class="con" data-label="星座"><div class="cell-val"><span class="con-abbr">Cam</span> <span class="con-name">鹿豹座</span></div></td></tr><tr><td class="month" data-label="月份"><div class="cell-val">二月</div></td><td class="photo" data-label="圖片"><div class="cell-val"><span class="thumb-empty" title="圖片載入失敗"></span></div></td><td class="name" data-label="名稱"><div class="cell-val"><div class="label">Vela SuperNova Remnant</div></div></td><td class="num" data-label="星等"><div class="cell-val">12.0</div></td><td class="num mark-ok" data-label="視徑"><div class="cell-val">8°00'</div></td><td class="num" data-label="RA"><div class="cell-val">08h 31m 36s</div></td><td class="num mark-bad" data-label="DEC"><div class="cell-val">-44°28'59"</div></td><td class="con" data-label="星座"><div class="cell-val"><span class="con-abbr">Vel</span> <span class="con-name">船帆座</span></div></td></tr></tbody>
       </table>
     </div>
 
-    <p class="empty" id="empty" hidden>沒有符合條件的天體 / No objects match these filters.</p>
+    <p class="empty" id="empty" hidden="">沒有符合條件的天體 / No objects match these filters.</p>
   </section>
 
   <section aria-labelledby="glo-h">
     <h2 id="glo-h">星表縮寫 / Catalogue Abbreviations</h2>
     <p class="section-note">表格中使用到的深空天體星表。</p>
-    <div class="glossary" id="glossary"></div>
+    <div class="glossary" id="glossary"><div><dl><dt>M</dt><dd>Messier's Catalog</dd></dl></div><div><dl><dt>NGC</dt><dd>the New General Catalogue of Nebulae and Clusters of Stars</dd></dl></div><div><dl><dt>IC</dt><dd>the Index Catalogue of Nebulae and Clusters of Stars</dd></dl></div><div><dl><dt>LDN</dt><dd>Lynds' Catalog of Dark Nebulae</dd></dl></div><div><dl><dt>LBN</dt><dd>Lynds' Catalog of Bright Nebulae</dd></dl></div><div><dl><dt>Sh 2</dt><dd>the Sharpless Catalog II</dd></dl></div><div><dl><dt>Barnard</dt><dd>Barnard's Catalog of Dark Nebulae</dd></dl></div><div><dl><dt>vdB</dt><dd>van den Bergh's Catalog of Reflection Nebulae</dd></dl></div><div><dl><dt>HIP</dt><dd>the Hipparcos Catalogue</dd></dl></div><div><dl><dt>DWB</dt><dd>Dickel, Wendker, &amp; Bieritz, 1969. The Cygnus X region. V. Catalogue and distances of optically visible HII regions.</dd></dl></div></div>
   </section>
 
   <section aria-labelledby="pos-h">
@@ -824,7 +846,7 @@
     <figure>
       <img src="assets/messier-table.jpg" alt="The aPeriodic Table of Messier Objects — all 110 Messier objects arranged as a periodic table" loading="lazy">
       <figcaption>
-        The aPeriodic Table of Messier Objects &copy; Mike Keith. Shot with an Explore Scientific 102ED refractor and
+        The aPeriodic Table of Messier Objects © Mike Keith. Shot with an Explore Scientific 102ED refractor and
         Astro-Tech 72ED, on a Borg 50mm guide scope / Starlight Xpress H694C one-shot-colour CCD.
       </figcaption>
     </figure>
@@ -837,17 +859,17 @@
   <p class="copy">
     <span class="copy-mark" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="12" cy="12" r="9.25" stroke="currentColor" stroke-width="1.6"/>
-        <path d="M14.35 8.85a3.6 3.6 0 1 0 0 6.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        <circle cx="12" cy="12" r="9.25" stroke="currentColor" stroke-width="1.6"></circle>
+        <path d="M14.35 8.85a3.6 3.6 0 1 0 0 6.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
       </svg>
     </span>
     <span>Copyright © 2026 Harako．天体観測「Tentai Kansoku」Catalogue．保留所有權利。</span>
   </p>
 </footer>
 
-<div id="lightbox" hidden>
+<div id="lightbox" style="--lb-bar: 0px;" hidden="">
   <div class="lb-stage" id="lb-stage">
-    <img id="lb-img" alt="" referrerpolicy="no-referrer">
+    <img id="lb-img" alt="IC2948 IC2944 · 奔雞星雲 半人馬座λ星雲" referrerpolicy="no-referrer" style="transform: translate(-50%, -50%) translate(0px, 0px) scale(1);">
     <button type="button" class="lb-close" id="lb-close" aria-label="關閉大圖" title="關閉（Esc）">×</button>
   </div>
   <div class="lb-ui">
@@ -857,9 +879,9 @@
       <button type="button" id="lb-zoom-reset">1×</button>
     </div>
     <div class="lb-caption">
-      <div id="lb-title"></div>
-      <div id="lb-credit"></div>
-      <a id="lb-source" href="#" target="_blank" rel="noopener noreferrer">來源網站</a>
+      <div id="lb-title">IC 2944 · IC2948 IC2944 · 奔雞星雲 半人馬座λ星雲</div>
+      <div id="lb-credit">圖片：Wikipedia / Wikimedia Commons</div>
+      <a id="lb-source" href="https://en.wikipedia.org/wiki/IC_2944" target="_blank" rel="noopener noreferrer">來源網站</a>
     </div>
   </div>
 </div>
@@ -1231,7 +1253,23 @@
       Object.keys(selectors).forEach(function (k) { selectors[k].sync(); });
       syncInputs();
       render();
+      this.blur();
     });
+  }
+
+  function hasActiveFilters() {
+    return state.q !== "" ||
+      state.months.size > 0 ||
+      state.cats.size > 0 ||
+      state.cons.size > 0 ||
+      state.hideUnsuitableDec ||
+      [state.mag, state.size, state.ra, state.dec].some(function (r) {
+        return r.min !== null || r.max !== null;
+      });
+  }
+
+  function syncResetUi() {
+    $("reset").disabled = !hasActiveFilters();
   }
 
   function syncQuickUi() {
@@ -1367,6 +1405,7 @@
 
     syncSortUi();
     syncQuickUi();
+    syncResetUi();
   }
 
   /* ---------- Lightbox ---------- */
@@ -1391,6 +1430,33 @@
     $("lightbox").style.setProperty("--lb-bar", bar + "px");
     $("lb-img").style.transform =
       "translate(-50%, -50%) translate(" + lb.x + "px, " + (lb.y - bar / 2) + "px) scale(" + lb.scale + ")";
+    $("lb-stage").classList.toggle("is-zoomable", lb.scale > 1);
+  }
+
+  // Keep the zoomed image within the stage so no background shows through.
+  function lbClamp() {
+    var img = $("lb-img");
+    var stage = $("lb-stage");
+    var sw = stage.clientWidth;
+    var sh = stage.clientHeight;
+    var iw = img.naturalWidth || 0;
+    var ih = img.naturalHeight || 0;
+    var scaledW = iw * lb.scale;
+    var scaledH = ih * lb.scale;
+    var bar = document.querySelector(".lb-ui").offsetHeight;
+
+    if (scaledW <= sw) {
+      lb.x = 0;
+    } else {
+      var maxX = (scaledW - sw) / 2;
+      lb.x = Math.max(-maxX, Math.min(maxX, lb.x));
+    }
+    if (scaledH <= sh) {
+      lb.y = 0;
+    } else {
+      var maxY = (scaledH - sh) / 2;
+      lb.y = Math.max(bar / 2 - maxY, Math.min(bar / 2 + maxY, lb.y));
+    }
   }
 
   function lbResetView() {
@@ -1398,6 +1464,7 @@
     lb.x = 0;
     lb.y = 0;
     lbApply();
+    syncZoomUi();
   }
 
   function lbZoom(factor, cx, cy) {
@@ -1410,7 +1477,15 @@
     }
     lb.scale = next;
     if (lb.scale === 1) { lb.x = 0; lb.y = 0; }
+    lbClamp();
     lbApply();
+    syncZoomUi();
+  }
+
+  function syncZoomUi() {
+    $("lb-zoom-out").disabled = lb.scale <= 1;
+    $("lb-zoom-in").disabled = lb.scale >= 8;
+    $("lb-zoom-reset").disabled = lb.scale <= 1;
   }
 
   function lbOpen(i) {
@@ -1420,7 +1495,7 @@
     var caption = obj ? objectCaption(obj) : (img.title || "");
     $("lb-img").src = img.full;
     $("lb-img").alt = caption;
-    $("lb-title").textContent = (img.title ? img.title + " · " : "") + caption;
+    $("lb-title").textContent = caption;
     var credit = $("lb-credit");
     credit.textContent = img.credit ? "圖片：" + img.credit : "";
     credit.hidden = !img.credit;
@@ -1491,34 +1566,34 @@
 
     stage.addEventListener("pointerdown", function (e) {
       if (e.target.id !== "lb-img" && e.target !== stage) return;
-      lb.drag = true;
       lb.px = e.clientX;
       lb.py = e.clientY;
       lb.sx = lb.x;
       lb.sy = lb.y;
-      stage.classList.add("is-dragging");
-      stage.setPointerCapture(e.pointerId);
+      // Only drag when zoomed in; otherwise the pointerup acts as a click-to-close.
+      lb.drag = lb.scale > 1;
+      if (lb.drag) stage.classList.add("is-dragging");
+      try { stage.setPointerCapture(e.pointerId); } catch (err) {}
     });
     stage.addEventListener("pointermove", function (e) {
       if (!lb.drag) return;
       lb.x = lb.sx + (e.clientX - lb.px);
       lb.y = lb.sy + (e.clientY - lb.py);
+      lbClamp();
       lbApply();
     });
     function endDrag(e) {
-      if (!lb.drag) return;
+      var wasDragging = lb.drag;
       lb.drag = false;
       stage.classList.remove("is-dragging");
       try { stage.releasePointerCapture(e.pointerId); } catch (err) {}
+      // Close on a click (not zoomed, or a drag without meaningful movement).
+      if (!wasDragging || Math.hypot(e.clientX - lb.px, e.clientY - lb.py) < 5) {
+        lbClose();
+      }
     }
     stage.addEventListener("pointerup", endDrag);
     stage.addEventListener("pointercancel", endDrag);
-
-    stage.addEventListener("dblclick", function (e) {
-      if (e.target.closest("button, a")) return;
-      if (lb.scale > 1) lbResetView();
-      else lbZoom(2.5);
-    });
 
     stage.addEventListener("touchstart", function (e) {
       if (e.touches.length === 2) {
@@ -1536,7 +1611,9 @@
       var dist = Math.hypot(dx, dy);
       lb.scale = Math.min(8, Math.max(1, lb.pinchScale * (dist / lb.pinch)));
       if (lb.scale === 1) { lb.x = 0; lb.y = 0; }
+      lbClamp();
       lbApply();
+      syncZoomUi();
     }, { passive: false });
   }
 
@@ -1556,5 +1633,6 @@
 })();
 </script>
 
-</body>
-</html>
+
+
+</body></html>
