@@ -511,6 +511,22 @@
   }
   .lb-stage.is-zoomable { cursor: grab; }
   .lb-stage.is-zoomable.is-dragging { cursor: grabbing; }
+  .lb-stage.is-loading::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 40px;
+    height: 40px;
+    margin: -20px 0 0 -20px;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    border-top-color: rgba(255, 255, 255, 0.85);
+    border-radius: 50%;
+    animation: lb-spin 0.8s linear infinite;
+    pointer-events: none;
+    z-index: 3;
+  }
+  @keyframes lb-spin { to { transform: rotate(360deg); } }
   #lb-img {
     display: block;
     position: absolute;
@@ -1386,6 +1402,7 @@
   var lb = {
     open: false,
     index: 0,
+    currentSrc: "",
     scale: 1,
     x: 0,
     y: 0,
@@ -1498,10 +1515,13 @@
     var img = IMAGES[i] || IMAGES[String(i)];
     if (!img || !img.full) return;
     lb.index = i;
+    lb.currentSrc = img.full;
     var obj = OBJECTS[i];
     var caption = obj ? objectCaption(obj) : (img.title || "");
-    $("lb-img").src = img.full;
-    $("lb-img").alt = caption;
+    var lbImg = $("lb-img");
+    lbImg.src = img.full;
+    lbImg.alt = caption;
+    $("lb-stage").classList.add("is-loading");
     $("lb-title").textContent = caption;
     var credit = $("lb-credit");
     credit.textContent = img.credit ? "圖片：" + img.credit : "";
@@ -1529,6 +1549,7 @@
     if (lb.clickTimer) { clearTimeout(lb.clickTimer); lb.clickTimer = null; }
     if (lb.indicatorTimer) { clearTimeout(lb.indicatorTimer); lb.indicatorTimer = null; }
     $("lb-indicator").classList.remove("is-visible");
+    $("lb-stage").classList.remove("is-loading");
     $("lightbox").hidden = true;
     $("lb-img").removeAttribute("src");
     document.body.style.overflow = "";
@@ -1552,7 +1573,17 @@
       btn.parentNode.replaceChild(span, btn);
     }, true);
 
-    $("lb-img").addEventListener("load", lbResetView);
+    // Only react to the load of the image currently being shown. A stale
+    // load (an earlier image that finished after we switched away) must
+    // not reset the view or hide the spinner for the new image.
+    $("lb-img").addEventListener("load", function () {
+      if (!$("lb-img").src || new URL($("lb-img").src, location.href).href !== new URL(lb.currentSrc, location.href).href) return;
+      $("lb-stage").classList.remove("is-loading");
+      lbResetView();
+    });
+    $("lb-img").addEventListener("error", function () {
+      $("lb-stage").classList.remove("is-loading");
+    });
     window.addEventListener("resize", function () { if (lb.open) lbApply(); });
 
     document.addEventListener("keydown", function (e) {
