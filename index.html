@@ -511,11 +511,11 @@
     cursor: default;
     touch-action: none;
   }
-  /* Clips the zoomed image to the area above the bottom bar so it never
-     overlaps the translucent control bar. */
+  /* Clips the zoomed image to the stage on all sides but lets it run under
+     the translucent bottom bar, so the bar reads as frosted glass. */
   .lb-viewport {
     position: absolute;
-    inset: 0 0 var(--lb-bar, 0px) 0;
+    inset: 0;
     overflow: hidden;
   }
   .lb-stage.is-zoomable { cursor: grab; }
@@ -1455,13 +1455,12 @@
     $("lb-stage").classList.toggle("is-zoomable", lb.scale > 1);
   }
 
-  // Keep the zoomed image within the viewport (the area above the bar).
+  // Keep the zoomed image within the viewport.
   function lbClamp() {
     var img = $("lb-img");
     var stage = $("lb-stage");
-    var bar = document.querySelector(".lb-ui").offsetHeight;
     var sw = stage.clientWidth;
-    var sh = stage.clientHeight - bar; // viewport height
+    var sh = stage.clientHeight;
     var iw = img.naturalWidth || 0;
     var ih = img.naturalHeight || 0;
     var scaledW = iw * lb.scale;
@@ -1644,10 +1643,7 @@
       if (!lb.open) return;
       e.preventDefault();
       var rect = stage.getBoundingClientRect();
-      var bar = document.querySelector(".lb-ui").offsetHeight;
-      // Zoom focal point is relative to the viewport center (the image's
-      // natural center), not the full stage which includes the bottom bar.
-      lbZoom(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX - rect.left - rect.width / 2, e.clientY - rect.top - (rect.height - bar) / 2);
+      lbZoom(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX - rect.left - rect.width / 2, e.clientY - rect.top - rect.height / 2);
     }, { passive: false });
 
     // Show the position indicator while the pointer is over the stage,
