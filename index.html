@@ -1544,8 +1544,9 @@
     // full image paints over it. No thumb -> just the empty stage.
     if (img.thumb) { ph.src = img.thumb; ph.hidden = false; }
     else { ph.removeAttribute("src"); ph.hidden = true; }
-    // Drop the previous image immediately; the full image paints over the
-    // placeholder once it is ready.
+    // Hide the previous full image immediately so the new thumbnail shows
+    // through at once; the full image paints over the placeholder once ready.
+    lbImg.hidden = true;
     lbImg.removeAttribute("src");
     lbImg.src = img.full;
     lbImg.alt = caption;
@@ -1609,6 +1610,7 @@
     $("lb-img").addEventListener("load", function () {
       var lbImg = $("lb-img");
       if (!lbImg.src || new URL(lbImg.src, location.href).href !== new URL(lb.currentSrc, location.href).href) return;
+      lbImg.hidden = false;
       $("lb-placeholder").hidden = true;
       $("lb-stage").classList.remove("is-loading");
       lbResetView();
