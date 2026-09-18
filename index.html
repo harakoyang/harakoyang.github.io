@@ -230,7 +230,14 @@
     border-radius: 10px;
   }
   .chip.reset svg { width: 16px; height: 16px; }
-  .chip.reset:hover { color: var(--text); border-style: solid; background: rgba(140, 170, 230, 0.16); }
+  .chip.reset:not(:disabled):hover { color: var(--text); border-style: solid; background: rgba(140, 170, 230, 0.16); }
+  .chip.reset:disabled { opacity: 0.4; cursor: default; }
+  .chip.reset:disabled:hover {
+    color: var(--muted);
+    border-color: var(--line);
+    border-style: dashed;
+    background: none;
+  }
 
   .chip.reset::after {
     content: attr(data-tip);
@@ -248,7 +255,7 @@
     pointer-events: none;
     transition: opacity .15s;
   }
-  .chip.reset:hover::after,
+  .chip.reset:not(:disabled):hover::after,
   .chip.reset:focus-visible::after { opacity: 1; }
 
   /* ---------- Filter bar ---------- */
@@ -735,7 +742,7 @@
       <button class="chip" data-quick="mag" data-tone="ok" aria-pressed="false"></button>
       <button class="chip" data-quick="size" data-tone="ok" aria-pressed="false"></button>
       <button class="chip" data-quick="dec" data-tone="bad" aria-pressed="false">排除紅色天區</button>
-      <button class="chip reset" id="reset" data-tip="重置全部篩選" aria-label="重置全部篩選">
+      <button class="chip reset" id="reset" data-tip="重置全部篩選" aria-label="重置全部篩選" disabled>
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
           <path d="M19.2 3.8v3.4h-3.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1231,7 +1238,23 @@
       Object.keys(selectors).forEach(function (k) { selectors[k].sync(); });
       syncInputs();
       render();
+      this.blur();
     });
+  }
+
+  function hasActiveFilters() {
+    return state.q !== "" ||
+      state.months.size > 0 ||
+      state.cats.size > 0 ||
+      state.cons.size > 0 ||
+      state.hideUnsuitableDec ||
+      [state.mag, state.size, state.ra, state.dec].some(function (r) {
+        return r.min !== null || r.max !== null;
+      });
+  }
+
+  function syncResetUi() {
+    $("reset").disabled = !hasActiveFilters();
   }
 
   function syncQuickUi() {
@@ -1367,6 +1390,7 @@
 
     syncSortUi();
     syncQuickUi();
+    syncResetUi();
   }
 
   /* ---------- Lightbox ---------- */
