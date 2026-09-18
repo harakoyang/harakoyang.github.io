@@ -544,15 +544,12 @@
   .lb-indicator {
     position: absolute;
     left: 50%;
-    bottom: 18px;
+    bottom: 12%;
     transform: translateX(-50%);
-    padding: 4px 12px;
-    border-radius: 999px;
-    background: rgba(6, 12, 30, 0.82);
-    border: 1px solid var(--line);
-    color: var(--muted);
-    font-size: 12px;
+    color: var(--text);
+    font-size: 20px;
     letter-spacing: 0.05em;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
     opacity: 0;
     pointer-events: none;
     transition: opacity .2s;
@@ -1484,7 +1481,7 @@
     lb.indicatorTimer = setTimeout(function () {
       el.classList.remove("is-visible");
       lb.indicatorTimer = null;
-    }, 3000);
+    }, 1000);
   }
 
   function lbOpen(i) {
