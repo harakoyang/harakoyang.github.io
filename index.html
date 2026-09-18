@@ -1336,8 +1336,14 @@
     return chips + label;
   }
 
+  var filteredPhotoIndices = [];
+
   function render() {
     var rows = OBJECTS.filter(matches).sort(compare);
+    filteredPhotoIndices = rows.map(function (o) { return o.i; }).filter(function (i) {
+      var img = IMAGES[i] || IMAGES[String(i)];
+      return img && img.full;
+    });
     var w = decWindow();
 
     $("tbody").innerHTML = rows.map(function (o) {
@@ -1453,6 +1459,7 @@
 
   // Indices of objects that actually have a full image to display.
   function lbImageIndices() {
+    if (filteredPhotoIndices.length > 0) return filteredPhotoIndices.slice();
     var out = [];
     for (var i = 0; i < OBJECTS.length; i++) {
       var img = IMAGES[i] || IMAGES[String(i)];
