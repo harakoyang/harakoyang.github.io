@@ -136,6 +136,9 @@
     border: 1px solid var(--line);
     border-radius: 12px;
   }
+  .stat[data-quick] { cursor: pointer; transition: border-color .15s, background .15s; }
+  .stat[data-quick]:hover { border-color: var(--line-strong); }
+  .stat[data-quick][aria-pressed="true"] { border-color: var(--ok); background: var(--ok-bg); }
 
   .stat b { display: block; font-size: clamp(20px, 2.8vw, 26px); font-weight: 700; line-height: 1.3; }
   .stat b small { font-size: 15px; font-weight: 500; color: var(--muted); }
@@ -505,7 +508,7 @@
     flex: 1;
     min-height: 0;
     overflow: hidden;
-    background: rgba(2, 6, 18, 0.92);
+    background-color: rgba(2, 6, 18, 0.92);
     cursor: default;
     touch-action: none;
   }
@@ -527,20 +530,22 @@
     z-index: 3;
   }
   @keyframes lb-spin { to { transform: rotate(360deg); } }
-  #lb-img {
+  #lb-img, #lb-placeholder {
     display: block;
     position: absolute;
     left: 50%;
     top: 50%;
+    width: 100%;
+    height: calc(100% - var(--lb-bar, 0px));
     max-width: 100%;
     max-height: calc(100% - var(--lb-bar, 0px));
-    width: auto;
-    height: auto;
     object-fit: contain;
     transform-origin: center center;
     user-select: none;
     -webkit-user-drag: none;
   }
+  #lb-placeholder { z-index: 1; }
+  #lb-img { z-index: 2; }
   /* Floats over the photo, so the glass actually reads as translucent. */
   .lb-ui {
     position: absolute;
@@ -744,7 +749,7 @@
       <button class="chip" data-quick="suitable" data-tone="ok" aria-pressed="false">最適觀測（三項全符合）</button>
       <button class="chip" data-quick="mag" data-tone="ok" aria-pressed="false">星等 ≤ 9.5</button>
       <button class="chip" data-quick="size" data-tone="ok" aria-pressed="false">視徑 ≥ 0°30′</button>
-      <button class="chip" data-quick="dec" data-tone="bad" aria-pressed="false">排除紅色天區</button>
+      <button class="chip" data-quick="dec" data-tone="bad" aria-pressed="false">排除緯度外天區</button>
       <button class="chip reset" id="reset" data-tip="重置全部篩選" aria-label="重置全部篩選">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path>
@@ -857,6 +862,7 @@
 
 <div id="lightbox" style="--lb-bar: 0px;" hidden="">
   <div class="lb-stage" id="lb-stage">
+    <img id="lb-placeholder" alt="" referrerpolicy="no-referrer" style="display:none;">
     <img id="lb-img" alt="IC2948 IC2944 · 奔雞星雲 半人馬座λ星雲" referrerpolicy="no-referrer" style="transform: translate(-50%, -50%) translate(0px, 0px) scale(1);">
     <div class="lb-indicator" id="lb-indicator"></div>
   </div>
@@ -1221,6 +1227,16 @@
       render();
     });
 
+    // The stat cards for "最適觀測" / "緯度外天區" double as quick toggles.
+    $("stats").addEventListener("click", function (e) {
+      var stat = e.target.closest(".stat[data-quick]");
+      if (!stat) return;
+      var q = quickState[stat.dataset.quick];
+      q.set(!q.on());
+      syncInputs();
+      render();
+    });
+
     $("reset").addEventListener("click", function () {
       state.q = "";
       state.months.clear();
@@ -1385,11 +1401,12 @@
     var outside = rows.filter(function (o) { return !decOk(o); }).length;
 
     $("stats").innerHTML = [
-      ["", rows.length + "<small> / " + OBJECTS.length + "</small>", "目前顯示"],
-      ["is-ok", suitable, "最適觀測"],
-      ["is-bad", outside, "緯度外天區"]
+      ["", rows.length + "<small> / " + OBJECTS.length + "</small>", "目前顯示", ""],
+      ["is-ok", suitable, "最適觀測", "suitable"],
+      ["is-bad", outside, "緯度外天區", ""]
     ].map(function (s) {
-      return '<div class="stat ' + s[0] + '"><b>' + s[1] + "</b><span>" + s[2] + "</span></div>";
+      var q = s[3] ? ' data-quick="' + s[3] + '"' : "";
+      return '<div class="stat ' + s[0] + '"' + q + '><b>' + s[1] + "</b><span>" + s[2] + "</span></div>";
     }).join("");
 
     syncSortUi();
@@ -1422,8 +1439,9 @@
     // The bar overlays the stage, so keep the photo above it.
     var bar = document.querySelector(".lb-ui").offsetHeight;
     $("lightbox").style.setProperty("--lb-bar", bar + "px");
-    $("lb-img").style.transform =
-      "translate(-50%, -50%) translate(" + lb.x + "px, " + (lb.y - bar / 2) + "px) scale(" + lb.scale + ")";
+    var t = "translate(-50%, -50%) translate(" + lb.x + "px, " + (lb.y - bar / 2) + "px) scale(" + lb.scale + ")";
+    $("lb-img").style.transform = t;
+    $("lb-placeholder").style.transform = t;
     $("lb-stage").classList.toggle("is-zoomable", lb.scale > 1);
   }
 
@@ -1519,9 +1537,21 @@
     var obj = OBJECTS[i];
     var caption = obj ? objectCaption(obj) : (img.title || "");
     var lbImg = $("lb-img");
+    var ph = $("lb-placeholder");
+    var stage = $("lb-stage");
+    // Show the (already-cached) thumbnail in a sibling that shares the exact
+    // same box + transform as the full image, so there is no jump when the
+    // full image paints over it. No thumb -> just the empty stage.
+    if (img.thumb) { ph.src = img.thumb; ph.style.display = ""; }
+    else { ph.removeAttribute("src"); ph.style.display = "none"; }
+    // Hide the previous full image immediately so the new thumbnail shows
+    // through at once; the full image paints over the placeholder once ready.
+    // (Use inline display — the CSS `display:block` would override `hidden`.)
+    lbImg.style.display = "none";
+    lbImg.removeAttribute("src");
     lbImg.src = img.full;
     lbImg.alt = caption;
-    $("lb-stage").classList.add("is-loading");
+    stage.classList.add("is-loading");
     $("lb-title").textContent = caption;
     var credit = $("lb-credit");
     credit.textContent = img.credit ? "圖片：" + img.credit : "";
@@ -1549,7 +1579,10 @@
     if (lb.clickTimer) { clearTimeout(lb.clickTimer); lb.clickTimer = null; }
     if (lb.indicatorTimer) { clearTimeout(lb.indicatorTimer); lb.indicatorTimer = null; }
     $("lb-indicator").classList.remove("is-visible");
-    $("lb-stage").classList.remove("is-loading");
+    var stage = $("lb-stage");
+    stage.classList.remove("is-loading");
+    $("lb-placeholder").style.display = "none";
+    $("lb-img").style.display = "";
     $("lightbox").hidden = true;
     $("lb-img").removeAttribute("src");
     document.body.style.overflow = "";
@@ -1577,7 +1610,10 @@
     // load (an earlier image that finished after we switched away) must
     // not reset the view or hide the spinner for the new image.
     $("lb-img").addEventListener("load", function () {
-      if (!$("lb-img").src || new URL($("lb-img").src, location.href).href !== new URL(lb.currentSrc, location.href).href) return;
+      var lbImg = $("lb-img");
+      if (!lbImg.src || new URL(lbImg.src, location.href).href !== new URL(lb.currentSrc, location.href).href) return;
+      lbImg.style.display = "";
+      $("lb-placeholder").style.display = "none";
       $("lb-stage").classList.remove("is-loading");
       lbResetView();
     });
