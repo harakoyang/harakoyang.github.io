@@ -507,14 +507,20 @@
     position: relative;
     flex: 1;
     min-height: 0;
-    overflow: hidden;
     background-color: rgba(2, 6, 18, 0.92);
     cursor: default;
     touch-action: none;
   }
+  /* Clips the zoomed image to the area above the bottom bar so it never
+     overlaps the translucent control bar. */
+  .lb-viewport {
+    position: absolute;
+    inset: 0 0 var(--lb-bar, 0px) 0;
+    overflow: hidden;
+  }
   .lb-stage.is-zoomable { cursor: grab; }
   .lb-stage.is-zoomable.is-dragging { cursor: grabbing; }
-  .lb-stage.is-loading::after {
+  .lb-stage.is-loading .lb-viewport::after {
     content: "";
     position: absolute;
     left: 50%;
@@ -536,9 +542,9 @@
     left: 50%;
     top: 50%;
     width: 100%;
-    height: calc(100% - var(--lb-bar, 0px));
+    height: 100%;
     max-width: 100%;
-    max-height: calc(100% - var(--lb-bar, 0px));
+    max-height: 100%;
     object-fit: contain;
     transform-origin: center center;
     user-select: none;
@@ -552,6 +558,7 @@
     left: 0;
     right: 0;
     bottom: 0;
+    z-index: 5;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -862,9 +869,11 @@
 
 <div id="lightbox" style="--lb-bar: 0px;" hidden="">
   <div class="lb-stage" id="lb-stage">
-    <img id="lb-placeholder" alt="" referrerpolicy="no-referrer" style="display:none;">
-    <img id="lb-img" alt="IC2948 IC2944 · 奔雞星雲 半人馬座λ星雲" referrerpolicy="no-referrer" style="transform: translate(-50%, -50%) translate(0px, 0px) scale(1);">
-    <div class="lb-indicator" id="lb-indicator"></div>
+    <div class="lb-viewport">
+      <img id="lb-placeholder" alt="" referrerpolicy="no-referrer" style="display:none;">
+      <img id="lb-img" alt="IC2948 IC2944 · 奔雞星雲 半人馬座λ星雲" referrerpolicy="no-referrer" style="transform: translate(-50%, -50%) translate(0px, 0px) scale(1);">
+      <div class="lb-indicator" id="lb-indicator"></div>
+    </div>
   </div>
   <div class="lb-ui">
     <div class="lb-caption">
@@ -1436,26 +1445,27 @@
   };
 
   function lbApply() {
-    // The bar overlays the stage, so keep the photo above it.
     var bar = document.querySelector(".lb-ui").offsetHeight;
     $("lightbox").style.setProperty("--lb-bar", bar + "px");
-    var t = "translate(-50%, -50%) translate(" + lb.x + "px, " + (lb.y - bar / 2) + "px) scale(" + lb.scale + ")";
+    // The viewport already sits above the bar, so the image is centered in
+    // the viewport — no extra bar offset needed in the transform.
+    var t = "translate(-50%, -50%) translate(" + lb.x + "px, " + lb.y + "px) scale(" + lb.scale + ")";
     $("lb-img").style.transform = t;
     $("lb-placeholder").style.transform = t;
     $("lb-stage").classList.toggle("is-zoomable", lb.scale > 1);
   }
 
-  // Keep the zoomed image within the stage so no background shows through.
+  // Keep the zoomed image within the viewport (the area above the bar).
   function lbClamp() {
     var img = $("lb-img");
     var stage = $("lb-stage");
+    var bar = document.querySelector(".lb-ui").offsetHeight;
     var sw = stage.clientWidth;
-    var sh = stage.clientHeight;
+    var sh = stage.clientHeight - bar; // viewport height
     var iw = img.naturalWidth || 0;
     var ih = img.naturalHeight || 0;
     var scaledW = iw * lb.scale;
     var scaledH = ih * lb.scale;
-    var bar = document.querySelector(".lb-ui").offsetHeight;
 
     if (scaledW <= sw) {
       lb.x = 0;
@@ -1467,7 +1477,7 @@
       lb.y = 0;
     } else {
       var maxY = (scaledH - sh) / 2;
-      lb.y = Math.max(bar / 2 - maxY, Math.min(bar / 2 + maxY, lb.y));
+      lb.y = Math.max(-maxY, Math.min(maxY, lb.y));
     }
   }
 
@@ -1634,7 +1644,10 @@
       if (!lb.open) return;
       e.preventDefault();
       var rect = stage.getBoundingClientRect();
-      lbZoom(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX - rect.left - rect.width / 2, e.clientY - rect.top - rect.height / 2);
+      var bar = document.querySelector(".lb-ui").offsetHeight;
+      // Zoom focal point is relative to the viewport center (the image's
+      // natural center), not the full stage which includes the bottom bar.
+      lbZoom(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX - rect.left - rect.width / 2, e.clientY - rect.top - (rect.height - bar) / 2);
     }, { passive: false });
 
     // Show the position indicator while the pointer is over the stage,
@@ -1644,7 +1657,7 @@
     });
 
     stage.addEventListener("pointerdown", function (e) {
-      if (e.target.id !== "lb-img" && e.target !== stage) return;
+      if (e.target.id !== "lb-img" && e.target !== stage && !e.target.classList.contains("lb-viewport")) return;
       lb.px = e.clientX;
       lb.py = e.clientY;
       lb.sx = lb.x;
