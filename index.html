@@ -568,8 +568,24 @@
     background: transparent;
     color: var(--text);
     cursor: pointer;
+    transition: background .15s, border-color .15s, color .15s;
   }
-  .lb-tools button:hover { border-color: var(--line-strong); }
+  .lb-tools button:not(:disabled):hover {
+    background: rgba(140, 170, 230, 0.18);
+    border-color: var(--line-strong);
+  }
+  .lb-tools button:not(:disabled):active {
+    background: rgba(140, 170, 230, 0.3);
+  }
+  .lb-tools button:disabled {
+    opacity: 0.35;
+    cursor: default;
+    color: var(--muted);
+  }
+  .lb-tools button:disabled:hover {
+    background: transparent;
+    border-color: var(--line);
+  }
   .lb-caption { min-width: 0; flex: 1; }
   #lb-title { font-size: 14px; }
   #lb-credit {
@@ -1420,6 +1436,7 @@
     lb.x = 0;
     lb.y = 0;
     lbApply();
+    syncZoomUi();
   }
 
   function lbZoom(factor, cx, cy) {
@@ -1433,6 +1450,13 @@
     lb.scale = next;
     if (lb.scale === 1) { lb.x = 0; lb.y = 0; }
     lbApply();
+    syncZoomUi();
+  }
+
+  function syncZoomUi() {
+    $("lb-zoom-out").disabled = lb.scale <= 1;
+    $("lb-zoom-in").disabled = lb.scale >= 8;
+    $("lb-zoom-reset").disabled = lb.scale <= 1;
   }
 
   function lbOpen(i) {
@@ -1529,19 +1553,15 @@
     });
     function endDrag(e) {
       if (!lb.drag) return;
+      var moved = Math.hypot(e.clientX - lb.px, e.clientY - lb.py);
       lb.drag = false;
       stage.classList.remove("is-dragging");
       try { stage.releasePointerCapture(e.pointerId); } catch (err) {}
+      // A pointerup without meaningful drag is a click → close the lightbox.
+      if (moved < 5) lbClose();
     }
     stage.addEventListener("pointerup", endDrag);
     stage.addEventListener("pointercancel", endDrag);
-
-    // A single click on the stage (image or backdrop) closes the lightbox.
-    // Clicks on buttons/links (close, zoom, source) are ignored.
-    stage.addEventListener("click", function (e) {
-      if (e.target.closest("button, a")) return;
-      lbClose();
-    });
 
     stage.addEventListener("touchstart", function (e) {
       if (e.touches.length === 2) {
@@ -1560,6 +1580,7 @@
       lb.scale = Math.min(8, Math.max(1, lb.pinchScale * (dist / lb.pinch)));
       if (lb.scale === 1) { lb.x = 0; lb.y = 0; }
       lbApply();
+      syncZoomUi();
     }, { passive: false });
   }
 
