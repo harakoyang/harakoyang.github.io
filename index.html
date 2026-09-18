@@ -571,7 +571,7 @@
   .lb-indicator {
     position: absolute;
     left: 50%;
-    bottom: 12%;
+    bottom: calc(var(--lb-bar, 0px) + 20px);
     transform: translateX(-50%);
     padding: 4px 14px;
     border-radius: 999px;
@@ -1549,6 +1549,11 @@
     // Show the (cached) thumbnail instantly on the SAME element that will
     // hold the full image — one box, one transform, no chance of the two
     // ever being misaligned. Then swap to the full image once it is ready.
+    // Drop the old src first: browsers keep painting the previous image
+    // until the new one is decoded, so without this the OLD image would
+    // linger under the spinner instead of switching to the next thumbnail
+    // right away.
+    lbImg.removeAttribute("src");
     lbImg.src = img.thumb || img.full;
     lbImg.alt = caption;
     stage.classList.add("is-loading");
@@ -1572,9 +1577,12 @@
     lb.open = true;
     lbUpdateIndicator();
     lbShowIndicator();
-    lbResetView();
+    // Show the lightbox first so the bottom bar is laid out and its real
+    // height can be read — otherwise --lb-bar would be 0 and the thumbnail
+    // would paint in the wrong spot, then jump when the full image loads.
     $("lightbox").hidden = false;
     document.body.style.overflow = "hidden";
+    lbResetView();
     // Push a history entry so the browser Back button closes the lightbox
     // instead of leaving the page.
     history.pushState({lb: true}, "");
