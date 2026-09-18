@@ -1668,6 +1668,9 @@
 
     stage.addEventListener("pointerdown", function (e) {
       if (e.target.id !== "lb-img" && e.target !== stage && !e.target.classList.contains("lb-viewport")) return;
+      // A two-finger pinch is handled by the touch listeners; don't let a
+      // second pointer start a competing drag.
+      if (e.pointerType === "touch" && lb.pinch) return;
       lb.px = e.clientX;
       lb.py = e.clientY;
       lb.sx = lb.x;
@@ -1679,6 +1682,7 @@
       try { stage.setPointerCapture(e.pointerId); } catch (err) {}
     });
     stage.addEventListener("pointermove", function (e) {
+      if (lb.pinch) return;
       if (lb.drag) {
         lb.x = lb.sx + (e.clientX - lb.px);
         lb.y = lb.sy + (e.clientY - lb.py);
@@ -1733,19 +1737,41 @@
         var dx = a.clientX - b.clientX, dy = a.clientY - b.clientY;
         lb.pinch = Math.hypot(dx, dy);
         lb.pinchScale = lb.scale;
+        lb.pinchX = lb.x;
+        lb.pinchY = lb.y;
+        // Midpoint of the two fingers, relative to the stage center. The
+        // image center is offset up by bar/2 (see lbApply), so compensate.
+        var rect = stage.getBoundingClientRect();
+        var bar = document.querySelector(".lb-ui").offsetHeight;
+        lb.pinchCx = (a.clientX + b.clientX) / 2 - rect.left - rect.width / 2;
+        lb.pinchCy = (a.clientY + b.clientY) / 2 - rect.top - rect.height / 2 + bar / 2;
+        // Disable single-finger pointer-drag so it doesn't fight the pinch.
+        lb.drag = false;
+        stage.classList.remove("is-dragging");
       }
-    }, { passive: true });
+    }, { passive: false });
     stage.addEventListener("touchmove", function (e) {
       if (e.touches.length !== 2 || !lb.pinch) return;
       e.preventDefault();
       var a = e.touches[0], b = e.touches[1];
       var dx = a.clientX - b.clientX, dy = a.clientY - b.clientY;
       var dist = Math.hypot(dx, dy);
-      lb.scale = Math.min(8, Math.max(1, lb.pinchScale * (dist / lb.pinch)));
+      var next = Math.min(8, Math.max(1, lb.pinchScale * (dist / lb.pinch)));
+      if (next !== lb.scale) {
+        // Scale around the original two-finger midpoint (not the image
+        // center), so the point under the fingers stays put — no jump.
+        var k = next / lb.pinchScale;
+        lb.x = lb.pinchCx - (lb.pinchCx - lb.pinchX) * k;
+        lb.y = lb.pinchCy - (lb.pinchCy - lb.pinchY) * k;
+        lb.scale = next;
+      }
       if (lb.scale === 1) { lb.x = 0; lb.y = 0; }
       lbClamp();
       lbApply();
     }, { passive: false });
+    stage.addEventListener("touchend", function (e) {
+      if (e.touches.length < 2) lb.pinch = 0;
+    }, { passive: true });
   }
 
   function buildGlossary() {
