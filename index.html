@@ -892,6 +892,17 @@
   var OBJECTS = DATA.objects;
   var IMAGES = window.CATALOGUE_IMAGES || {};
 
+  // Bump this when any local photo file is replaced, so browsers bypass
+  // their cached copy and fetch the new image instead of showing the old one.
+  var IMG_VER = "20260919";
+  function imgUrl(u) {
+    if (!u) return u;
+    if (u.indexOf("assets/photos/") === 0 || u.indexOf("./assets/photos/") === 0) {
+      return u + (u.indexOf("?") >= 0 ? "&" : "?") + "v=" + IMG_VER;
+    }
+    return u;
+  }
+
   // Defaults are the thresholds the source workbook used for its blue markers;
   // all three are editable so the page can be matched to other gear or sites.
   var DEFAULT_MAG_MAX = 9.5;
@@ -1361,7 +1372,7 @@
       return '<span class="thumb-empty" title="暫無圖片"></span>';
     }
     return '<button type="button" class="thumb-btn" data-photo-i="' + o.i + '" aria-label="查看大圖：' + esc(objectCaption(o)) + '">' +
-             '<img src="' + esc(img.thumb) + '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">' +
+             '<img src="' + esc(imgUrl(img.thumb)) + '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">' +
            "</button>";
   }
 
@@ -1554,13 +1565,13 @@
     // linger under the spinner instead of switching to the next thumbnail
     // right away.
     lbImg.removeAttribute("src");
-    lbImg.src = img.thumb || img.full;
+    lbImg.src = imgUrl(img.thumb || img.full);
     lbImg.alt = caption;
     stage.classList.add("is-loading");
     if (img.thumb && img.full !== img.thumb) {
       var pre = new Image();
-      pre.onload = function () { if (lb.currentSrc === img.full) lbImg.src = img.full; };
-      pre.src = img.full;
+      pre.onload = function () { if (lb.currentSrc === img.full) lbImg.src = imgUrl(img.full); };
+      pre.src = imgUrl(img.full);
     }
     $("lb-title").textContent = caption;
     var credit = $("lb-credit");
