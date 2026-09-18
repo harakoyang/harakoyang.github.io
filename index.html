@@ -1549,6 +1549,11 @@
     // Show the (cached) thumbnail instantly on the SAME element that will
     // hold the full image — one box, one transform, no chance of the two
     // ever being misaligned. Then swap to the full image once it is ready.
+    // Drop the old src first: browsers keep painting the previous image
+    // until the new one is decoded, so without this the OLD image would
+    // linger under the spinner instead of switching to the next thumbnail
+    // right away.
+    lbImg.removeAttribute("src");
     lbImg.src = img.thumb || img.full;
     lbImg.alt = caption;
     stage.classList.add("is-loading");
