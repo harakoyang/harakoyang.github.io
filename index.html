@@ -1572,9 +1572,12 @@
     lb.open = true;
     lbUpdateIndicator();
     lbShowIndicator();
-    lbResetView();
+    // Show the lightbox first so the bottom bar is laid out and its real
+    // height can be read — otherwise --lb-bar would be 0 and the thumbnail
+    // would paint in the wrong spot, then jump when the full image loads.
     $("lightbox").hidden = false;
     document.body.style.overflow = "hidden";
+    lbResetView();
     // Push a history entry so the browser Back button closes the lightbox
     // instead of leaving the page.
     history.pushState({lb: true}, "");
