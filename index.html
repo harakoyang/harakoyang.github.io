@@ -1552,7 +1552,7 @@
     var img = IMAGES[i] || IMAGES[String(i)];
     if (!img || !img.full) return;
     lb.index = i;
-    lb.currentSrc = img.full;
+    lb.currentSrc = imgUrl(img.full);
     var obj = OBJECTS[i];
     var caption = obj ? objectCaption(obj) : (img.title || "");
     var lbImg = $("lb-img");
@@ -1570,7 +1570,7 @@
     stage.classList.add("is-loading");
     if (img.thumb && img.full !== img.thumb) {
       var pre = new Image();
-      pre.onload = function () { if (lb.currentSrc === img.full) lbImg.src = imgUrl(img.full); };
+      pre.onload = function () { if (lb.currentSrc === imgUrl(img.full)) lbImg.src = imgUrl(img.full); };
       pre.src = imgUrl(img.full);
     }
     $("lb-title").textContent = caption;
