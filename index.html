@@ -167,7 +167,9 @@
   .legend-card code { color: var(--text); font-size: 12px; }
 
   .crit-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
-  .crit-row input { width: 78px; padding: 6px 10px; }
+  .crit-row input[type="number"] { width: 44px; padding: 4px 6px; font-size: 12.5px; text-align: center; border-radius: 7px; }
+  /* Keeps the unit glued to its input when the row wraps. */
+  .crit-field { display: inline-flex; align-items: center; gap: 5px; }
   .crit-value { color: var(--text); font-variant-numeric: tabular-nums; }
 
   /* ---------- Form controls ---------- */
@@ -213,7 +215,41 @@
   .chip[aria-pressed="true"] { color: #06102a; background: var(--text); border-color: var(--text); font-weight: 600; }
   .chip[data-tone="ok"][aria-pressed="true"] { background: var(--ok); border-color: var(--ok); }
   .chip[data-tone="bad"][aria-pressed="true"] { background: var(--bad); border-color: var(--bad); }
-  .chip.reset { margin-left: auto; }
+  /* Icon-only, so it reads as an action rather than another filter. */
+  .chip.reset {
+    position: relative;
+    margin-left: auto;
+    align-self: center;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    background: none;
+    border-style: dashed;
+    border-radius: 10px;
+  }
+  .chip.reset svg { width: 16px; height: 16px; }
+  .chip.reset:hover { color: var(--text); border-style: solid; background: rgba(140, 170, 230, 0.16); }
+
+  .chip.reset::after {
+    content: attr(data-tip);
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 8px);
+    padding: 5px 9px;
+    background: var(--bg-soft);
+    border: 1px solid var(--line-strong);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .15s;
+  }
+  .chip.reset:hover::after,
+  .chip.reset:focus-visible::after { opacity: 1; }
 
   /* ---------- Filter bar ---------- */
   .filterbar {
@@ -368,7 +404,7 @@
   tbody td {
     padding: 11px 14px;
     border-bottom: 1px solid rgba(140, 170, 230, 0.1);
-    vertical-align: top;
+    vertical-align: middle;
   }
 
   tbody tr:last-child td { border-bottom: 0; }
@@ -382,12 +418,15 @@
   tbody tr:hover td.mark-ok { background: rgba(110, 193, 255, 0.22); }
   tbody tr:hover td.mark-bad { background: rgba(255, 129, 137, 0.22); }
 
-  /* Name stays compact; leftover width goes to constellation. */
-  thead th:nth-child(1), td.month { width: 4.6rem; }
-  thead th:nth-child(2), td.photo { width: 4.4rem; }
-  thead th:nth-child(3), td.name { width: 15.5rem; }
-  thead th:nth-child(4), thead th:nth-child(5) { width: 5.6rem; }
-  thead th:nth-child(6), thead th:nth-child(7) { width: 8.2rem; }
+  /* Table columns only: the card layout below 1000px sizes its cells itself. */
+  @media (min-width: 1001px) {
+    thead th:nth-child(1), td.month { width: 5rem; }
+    thead th:nth-child(2), td.photo { width: 4.8rem; }
+    thead th:nth-child(3), td.name { width: auto; }
+    thead th:nth-child(4), thead th:nth-child(5) { width: 6.4rem; }
+    thead th:nth-child(6), thead th:nth-child(7) { width: 9rem; }
+    thead th:nth-child(8), td.con { width: 9.5rem; white-space: nowrap; }
+  }
   td.name .label { overflow-wrap: break-word; }
   .desig { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 2px; }
 
@@ -413,7 +452,7 @@
     color: var(--muted);
   }
 
-  td.photo { padding: 8px 10px; vertical-align: middle; }
+  td.photo { padding: 8px 10px; }
   .thumb-btn {
     display: block;
     width: 52px;
@@ -452,14 +491,15 @@
     z-index: 200;
     display: flex;
     flex-direction: column;
-    background: rgba(2, 6, 18, 0.92);
   }
   #lightbox[hidden] { display: none; }
+  /* The dimmer lives on the stage, so the bar below stays see-through. */
   .lb-stage {
     position: relative;
     flex: 1;
     min-height: 0;
     overflow: hidden;
+    background: rgba(2, 6, 18, 0.92);
     cursor: grab;
     touch-action: none;
   }
@@ -470,7 +510,7 @@
     left: 50%;
     top: 50%;
     max-width: 100%;
-    max-height: 100%;
+    max-height: calc(100% - var(--lb-bar, 0px));
     width: auto;
     height: auto;
     object-fit: contain;
@@ -478,15 +518,21 @@
     user-select: none;
     -webkit-user-drag: none;
   }
+  /* Floats over the photo, so the glass actually reads as translucent. */
   .lb-ui {
-    flex: 0 0 auto;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 12px 18px;
     padding: 12px 18px 16px;
     border-top: 1px solid var(--line);
-    background: rgba(6, 12, 30, 0.96);
+    background: rgba(6, 12, 30, 0.26);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
   }
   /* Floats over the image so it stays reachable at any window width. */
   .lb-close {
@@ -629,7 +675,7 @@
     tbody td.photo { padding: 12px 14px 8px; }
     tbody td.photo .thumb-btn,
     tbody td.photo .thumb-empty { width: 96px; height: 72px; }
-    tbody td.con { white-space: nowrap; }
+    tbody td.con { width: auto; white-space: nowrap; }
     tbody td:last-child { padding-bottom: 13px; }
     tbody tr:hover td { background: none; }
     tbody tr:hover td.mark-ok { background: var(--ok-bg); }
@@ -662,8 +708,11 @@
           <label for="mag-th">星等 ≤</label>
           <input type="number" id="mag-th" value="9.5" step="0.1" min="-2" max="20">
           <label for="size-th">視徑 ≥</label>
-          <input type="number" id="size-th" value="30" step="5" min="1" max="1200">
-          <span>′ = <span class="crit-value" id="size-window"></span></span>
+          <span class="crit-field">
+            <input type="number" id="size-th" value="30" step="5" min="1" max="1200">
+            <span>′</span>
+          </span>
+          <span>= <span class="crit-value" id="size-window"></span></span>
         </div>
       </div>
       <div class="legend-card" style="--accent: var(--bad)">
@@ -672,8 +721,11 @@
            目標永遠低於地平線，或中天高度過低。</p>
         <div class="crit-row">
           <label for="lat">觀測點緯度</label>
-          <input type="number" id="lat" value="23.5" step="0.5" min="-90" max="90" aria-describedby="lat-window">
-          <span>°　適宜赤緯 <span class="crit-value" id="lat-window"></span></span>
+          <span class="crit-field">
+            <input type="number" id="lat" value="23.5" step="0.5" min="-90" max="90" aria-describedby="lat-window">
+            <span>°</span>
+          </span>
+          <span>適宜赤緯 <span class="crit-value" id="lat-window"></span></span>
         </div>
       </div>
     </div>
@@ -683,7 +735,12 @@
       <button class="chip" data-quick="mag" data-tone="ok" aria-pressed="false"></button>
       <button class="chip" data-quick="size" data-tone="ok" aria-pressed="false"></button>
       <button class="chip" data-quick="dec" data-tone="bad" aria-pressed="false">排除紅色天區</button>
-      <button class="chip reset" id="reset">重置全部篩選</button>
+      <button class="chip reset" id="reset" data-tip="重置全部篩選" aria-label="重置全部篩選">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+          <path d="M19.2 3.8v3.4h-3.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
     </div>
 
     <div class="filterbar" id="filterbar">
@@ -802,7 +859,7 @@
     <div class="lb-caption">
       <div id="lb-title"></div>
       <div id="lb-credit"></div>
-      <a id="lb-source" href="#" target="_blank" rel="noopener noreferrer">在來源網站查看</a>
+      <a id="lb-source" href="#" target="_blank" rel="noopener noreferrer">來源網站</a>
     </div>
   </div>
 </div>
@@ -1293,7 +1350,7 @@
     }).join("");
 
     $("empty").hidden = rows.length > 0;
-    $("lat-window").textContent = formatDeg(w.lo) + " … " + formatDeg(w.hi);
+    $("lat-window").textContent = formatDeg(w.lo) + " 至 " + formatDeg(w.hi);
     $("size-window").textContent = formatArcmin(state.sizeMin);
 
     // Summarise the filtered rows, so the strip always describes what is on screen.
@@ -1329,8 +1386,11 @@
   };
 
   function lbApply() {
+    // The bar overlays the stage, so keep the photo above it.
+    var bar = document.querySelector(".lb-ui").offsetHeight;
+    $("lightbox").style.setProperty("--lb-bar", bar + "px");
     $("lb-img").style.transform =
-      "translate(-50%, -50%) translate(" + lb.x + "px, " + lb.y + "px) scale(" + lb.scale + ")";
+      "translate(-50%, -50%) translate(" + lb.x + "px, " + (lb.y - bar / 2) + "px) scale(" + lb.scale + ")";
   }
 
   function lbResetView() {
@@ -1407,6 +1467,7 @@
     }, true);
 
     $("lb-img").addEventListener("load", lbResetView);
+    window.addEventListener("resize", function () { if (lb.open) lbApply(); });
     $("lb-zoom-in").addEventListener("click", function () { lbZoom(1.25); });
     $("lb-zoom-out").addEventListener("click", function () { lbZoom(1 / 1.25); });
     $("lb-zoom-reset").addEventListener("click", lbResetView);
