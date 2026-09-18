@@ -37,8 +37,9 @@
       radial-gradient(900px 500px at 90% 10%, #1b1840 0%, transparent 55%),
       var(--bg);
     color: var(--text);
-    font-family: "Hiragino Sans", "Yu Gothic", "Noto Sans JP", "PingFang TC",
-                 "Microsoft JhengHei", "PingFang SC", "Microsoft YaHei",
+    font-family: "PingFang TC", "Microsoft JhengHei", "Noto Sans TC",
+                 "PingFang SC", "Microsoft YaHei",
+                 "Hiragino Sans", "Yu Gothic", "Noto Sans JP",
                  system-ui, -apple-system, Segoe UI, sans-serif;
     line-height: 1.7;
     -webkit-font-smoothing: antialiased;
@@ -90,6 +91,11 @@
     line-height: 1.25;
     font-weight: 700;
     text-shadow: 0 2px 30px rgba(0, 0, 0, 0.85);
+  }
+
+  h1[lang="ja"] {
+    font-family: "Hiragino Sans", "Yu Gothic", "Noto Sans JP",
+                 "PingFang TC", "Microsoft JhengHei", sans-serif;
   }
 
   h1 .romaji { color: #9fc6ff; }
@@ -313,7 +319,13 @@
     background: rgba(8, 14, 36, 0.55);
   }
 
-  table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13.5px; }
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 13.5px;
+    table-layout: fixed;
+  }
 
   thead th {
     position: sticky;
@@ -370,7 +382,13 @@
   tbody tr:hover td.mark-ok { background: rgba(110, 193, 255, 0.22); }
   tbody tr:hover td.mark-bad { background: rgba(255, 129, 137, 0.22); }
 
-  td.name { min-width: 220px; }
+  /* Name stays compact; leftover width goes to constellation. */
+  thead th:nth-child(1), td.month { width: 4.6rem; }
+  thead th:nth-child(2), td.photo { width: 4.4rem; }
+  thead th:nth-child(3), td.name { width: 15.5rem; }
+  thead th:nth-child(4), thead th:nth-child(5) { width: 5.6rem; }
+  thead th:nth-child(6), thead th:nth-child(7) { width: 8.2rem; }
+  td.name .label { overflow-wrap: break-word; }
   .desig { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 2px; }
 
   .desig b {
@@ -383,12 +401,138 @@
     border-radius: 5px;
   }
 
-  .desig-plain { font-weight: 600; }
-  .label { color: var(--muted); font-size: 13px; }
+  .label { color: var(--muted); font-size: 13px; font-weight: 400; }
   .con-abbr { font-weight: 600; }
   .con-name { color: var(--muted); }
 
+  thead th.th-photo {
+    padding: 12px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+
+  td.photo { padding: 8px 10px; vertical-align: middle; }
+  .thumb-btn {
+    display: block;
+    width: 52px;
+    height: 52px;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #070d22;
+    cursor: zoom-in;
+  }
+  .thumb-btn img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .thumb-btn:hover { border-color: var(--line-strong); }
+  .thumb-btn:focus-visible { outline: 2px solid var(--ok); outline-offset: 2px; }
+  .thumb-empty {
+    display: block;
+    width: 52px;
+    height: 52px;
+    border-radius: 8px;
+    background:
+      linear-gradient(135deg, rgba(140,170,230,0.08), rgba(140,170,230,0.02));
+    border: 1px dashed var(--line);
+  }
+
   .empty { padding: 48px 0; color: var(--muted); text-align: center; }
+
+  /* ---------- Lightbox ---------- */
+  #lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    background: rgba(2, 6, 18, 0.92);
+  }
+  #lightbox[hidden] { display: none; }
+  .lb-stage {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    cursor: grab;
+    touch-action: none;
+  }
+  .lb-stage.is-dragging { cursor: grabbing; }
+  #lb-img {
+    display: block;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    transform-origin: center center;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+  .lb-ui {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 18px;
+    padding: 12px 18px 16px;
+    border-top: 1px solid var(--line);
+    background: rgba(6, 12, 30, 0.96);
+  }
+  /* Floats over the image so it stays reachable at any window width. */
+  .lb-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 2;
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--line-strong);
+    border-radius: 50%;
+    background: rgba(6, 12, 30, 0.82);
+    color: var(--text);
+    font-size: 26px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .lb-close:hover { background: rgba(140, 170, 230, 0.28); }
+  .lb-close:focus-visible { outline: 2px solid var(--ok); outline-offset: 2px; }
+  .lb-tools { display: flex; gap: 8px; }
+  .lb-tools button {
+    min-width: 40px;
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .lb-tools button:hover { border-color: var(--line-strong); }
+  .lb-caption { min-width: 0; flex: 1; }
+  #lb-title { font-size: 14px; }
+  #lb-credit {
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  #lb-credit[hidden] { display: none; }
+  #lb-source {
+    display: inline-block;
+    margin-top: 2px;
+    color: var(--ok);
+    font-size: 13px;
+  }
+  #lb-source[hidden] { display: none; }
 
   /* ---------- Glossary ---------- */
   .glossary { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
@@ -414,13 +558,29 @@
   /* ---------- Footer ---------- */
   footer {
     padding: 30px clamp(18px, 5vw, 48px) 50px;
-    border-top: 1px solid var(--line);
     text-align: center;
     font-size: 13px;
     color: var(--muted);
   }
 
-  footer p { margin: 4px 0; }
+  footer p { margin: 0; }
+
+  .copy {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+
+  .copy-mark {
+    display: inline-block;
+    width: 1.15em;
+    height: 1.15em;
+    margin-right: 0.4em;
+    vertical-align: -0.18em;
+    color: var(--muted);
+  }
+
+  .copy-mark svg { display: block; width: 100%; height: 100%; }
 
   /* ---------- Mobile: table becomes cards ---------- */
   @media (max-width: 1000px) {
@@ -457,7 +617,8 @@
 
     .cell-val { min-width: 0; }
 
-    tbody td.name { padding-top: 13px; min-width: 0; }
+    tbody td { width: auto; }
+    tbody td.name { padding-top: 13px; min-width: 0; width: auto; }
     tbody td.name .cell-val {
       display: flex;
       flex-wrap: wrap;
@@ -465,6 +626,9 @@
       gap: 4px 8px;
     }
     tbody td.name .desig { margin-bottom: 0; }
+    tbody td.photo { padding-top: 12px; }
+    tbody td.photo .thumb-btn,
+    tbody td.photo .thumb-empty { width: 96px; height: 72px; }
     tbody td.con { white-space: nowrap; }
     tbody td:last-child { padding-bottom: 13px; }
     tbody tr:hover td { background: none; }
@@ -478,8 +642,8 @@
 <header class="hero">
   <div class="hero-inner">
     <p class="eyebrow">Deep Sky &middot; 142 Objects &middot; 12 Months</p>
-    <h1>天体観測<span class="romaji">「Tentai Kansoku」</span>Catalogue</h1>
-    <p class="lede">由Harako整理的「天体観測」列表，按月份整理了最適觀測的142個深空天體，可逐欄篩選月份、星等、視徑、名稱、赤經、赤緯與星座。</p>
+    <h1 lang="ja">天体観測<span class="romaji">「Tentai Kansoku」</span>Catalogue</h1>
+    <p class="lede">由Harako整理的「天体観測」列表，列舉了各月份最適觀測深空天體（共142個），可逐欄篩選月份、星等、視徑、名稱、赤經、赤緯與星座。</p>
     <p class="lede">收錄範圍包括梅西耶星表（Messier's Catalog）、星雲和星團新總表（the New General Catalogue of Nebulae and Clusters of Stars, NGC）、巴納德暗星雲表（Barnard's Catalog of Dark Nebulae）在內的多個著名深空天體列表。</p>
   </div>
 </header>
@@ -612,17 +776,46 @@
 </main>
 
 <footer>
-  <p>天体観測「Tentai Kansoku」Catalogue by Harako</p>
-  <p>星等與視徑為概略值，會因資料來源而異。</p>
+  <p>注意：星等與視徑為概略值，會因資料來源而異。</p>
+  <p class="copy">
+    <span class="copy-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="9.25" stroke="currentColor" stroke-width="1.6"/>
+        <path d="M14.35 8.85a3.6 3.6 0 1 0 0 6.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+    </span>
+    <span>Copyright © 2026 Harako．天体観測「Tentai Kansoku」Catalogue．保留所有權利。</span>
+  </p>
 </footer>
 
-<script src="assets/catalogue.js"></script>
+<div id="lightbox" hidden>
+  <div class="lb-stage" id="lb-stage">
+    <img id="lb-img" alt="" referrerpolicy="no-referrer">
+    <button type="button" class="lb-close" id="lb-close" aria-label="關閉大圖" title="關閉（Esc）">×</button>
+  </div>
+  <div class="lb-ui">
+    <div class="lb-tools">
+      <button type="button" id="lb-zoom-out" aria-label="縮小">−</button>
+      <button type="button" id="lb-zoom-in" aria-label="放大">+</button>
+      <button type="button" id="lb-zoom-reset">1×</button>
+    </div>
+    <div class="lb-caption">
+      <div id="lb-title"></div>
+      <div id="lb-credit"></div>
+      <a id="lb-source" href="#" target="_blank" rel="noopener noreferrer">在來源網站查看</a>
+    </div>
+  </div>
+</div>
+
+<script src="assets/catalogue.js?v=local-images"></script>
+<script src="assets/images.js?v=local-images"></script>
 <script>
 (function () {
   "use strict";
 
   var DATA = window.CATALOGUE;
   var OBJECTS = DATA.objects;
+  var IMAGES = window.CATALOGUE_IMAGES || {};
 
   // Defaults are the thresholds the source workbook used for its blue markers;
   // all three are editable so the page can be matched to other gear or sites.
@@ -636,9 +829,10 @@
 
   var COLUMNS = [
     { key: "month", label: "月份" },
+    { key: "photo", label: "圖", sort: false },
+    { key: "name",  label: "名稱" },
     { key: "mag",   label: "星等" },
     { key: "size",  label: "視徑" },
-    { key: "name",  label: "天體編號 / 中英文名稱" },
     { key: "ra",    label: "RA" },
     { key: "dec",   label: "DEC" },
     { key: "con",   label: "星座" }
@@ -883,6 +1077,9 @@
 
   function buildHead() {
     $("thead-row").innerHTML = COLUMNS.map(function (c) {
+      if (c.sort === false) {
+        return '<th scope="col" data-key="' + c.key + '" class="th-photo">' + esc(c.label) + "</th>";
+      }
       return '<th scope="col" data-key="' + c.key + '">' +
                '<button type="button" class="sorter" data-key="' + c.key + '">' +
                  esc(c.label) + '<span class="arrow"></span>' +
@@ -898,7 +1095,7 @@
 
     $("sort").innerHTML =
       '<option value="i|1">原始順序（月份 · 赤經）</option>' +
-      COLUMNS.map(function (c) {
+      COLUMNS.filter(function (c) { return c.sort !== false; }).map(function (c) {
         return '<option value="' + c.key + '|1">' + esc(c.label) + ' ↑</option>' +
                '<option value="' + c.key + '|-1">' + esc(c.label) + ' ↓</option>';
       }).join("");
@@ -917,12 +1114,14 @@
 
   function syncSortUi() {
     Array.prototype.forEach.call($("thead-row").children, function (th) {
+      var arrow = th.querySelector(".arrow");
+      if (!arrow) return;
       if (th.dataset.key === state.sortKey) {
         th.setAttribute("aria-sort", state.sortDir === 1 ? "ascending" : "descending");
-        th.querySelector(".arrow").textContent = state.sortDir === 1 ? "▲" : "▼";
+        arrow.textContent = state.sortDir === 1 ? "▲" : "▼";
       } else {
         th.removeAttribute("aria-sort");
-        th.querySelector(".arrow").textContent = "";
+        arrow.textContent = "";
       }
     });
     $("sort").value = state.sortKey + "|" + state.sortDir;
@@ -1050,12 +1249,27 @@
     return '<td class="' + cls + '" data-label="' + esc(label) + '"><div class="cell-val">' + value + "</div></td>";
   }
 
+  function objectCaption(o) {
+    var ids = (o.ids || []).join(" ");
+    return [ids, o.label].filter(Boolean).join(" · ") || "深空天體";
+  }
+
+  function photoCell(o) {
+    var img = IMAGES[o.i] || IMAGES[String(o.i)];
+    if (!img || !img.thumb) {
+      return '<span class="thumb-empty" title="暫無圖片"></span>';
+    }
+    return '<button type="button" class="thumb-btn" data-photo-i="' + o.i + '" aria-label="查看大圖：' + esc(objectCaption(o)) + '">' +
+             '<img src="' + esc(img.thumb) + '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">' +
+           "</button>";
+  }
+
   function nameCell(o) {
     var chips = o.ids.length
       ? '<div class="desig">' + o.ids.map(function (id) { return "<b>" + esc(id) + "</b>"; }).join("") + "</div>"
       : "";
     var label = o.label
-      ? '<div class="' + (o.ids.length ? "label" : "desig-plain") + '">' + esc(o.label) + "</div>"
+      ? '<div class="label">' + esc(o.label) + "</div>"
       : "";
     return chips + label;
   }
@@ -1067,9 +1281,10 @@
     $("tbody").innerHTML = rows.map(function (o) {
       return "<tr>" +
         cell("月份", MONTH_NAMES[o.month - 1], "month") +
+        cell("圖", photoCell(o), "photo") +
+        cell("名稱", nameCell(o), "name") +
         cell("星等", o.magText || "—", "num" + (magOk(o) ? " mark-ok" : "")) +
         cell("視徑", o.sizeText || "—", "num" + (sizeOk(o) ? " mark-ok" : "")) +
-        cell("名稱", nameCell(o), "name") +
         cell("RA", esc(o.raText), "num") +
         cell("DEC", esc(o.decText), "num" + (decOk(o) ? "" : " mark-bad")) +
         cell("星座", '<span class="con-abbr">' + esc(o.con) + '</span> ' +
@@ -1097,6 +1312,173 @@
     syncQuickUi();
   }
 
+  /* ---------- Lightbox ---------- */
+
+  var lb = {
+    open: false,
+    scale: 1,
+    x: 0,
+    y: 0,
+    drag: false,
+    px: 0,
+    py: 0,
+    sx: 0,
+    sy: 0,
+    pinch: 0,
+    pinchScale: 1
+  };
+
+  function lbApply() {
+    $("lb-img").style.transform =
+      "translate(-50%, -50%) translate(" + lb.x + "px, " + lb.y + "px) scale(" + lb.scale + ")";
+  }
+
+  function lbResetView() {
+    lb.scale = 1;
+    lb.x = 0;
+    lb.y = 0;
+    lbApply();
+  }
+
+  function lbZoom(factor, cx, cy) {
+    var next = Math.min(8, Math.max(1, lb.scale * factor));
+    if (next === lb.scale) return;
+    if (typeof cx === "number") {
+      var k = next / lb.scale;
+      lb.x = cx - (cx - lb.x) * k;
+      lb.y = cy - (cy - lb.y) * k;
+    }
+    lb.scale = next;
+    if (lb.scale === 1) { lb.x = 0; lb.y = 0; }
+    lbApply();
+  }
+
+  function lbOpen(i) {
+    var img = IMAGES[i] || IMAGES[String(i)];
+    if (!img || !img.full) return;
+    var obj = OBJECTS[i];
+    var caption = obj ? objectCaption(obj) : (img.title || "");
+    $("lb-img").src = img.full;
+    $("lb-img").alt = caption;
+    $("lb-title").textContent = (img.title ? img.title + " · " : "") + caption;
+    var credit = $("lb-credit");
+    credit.textContent = img.credit ? "圖片：" + img.credit : "";
+    credit.hidden = !img.credit;
+    var src = $("lb-source");
+    if (img.source) {
+      src.href = img.source;
+      src.hidden = false;
+    } else {
+      src.removeAttribute("href");
+      src.hidden = true;
+    }
+    lb.open = true;
+    lbResetView();
+    $("lightbox").hidden = false;
+    document.body.style.overflow = "hidden";
+    $("lb-close").focus();
+  }
+
+  function lbClose() {
+    if (!lb.open) return;
+    lb.open = false;
+    lb.drag = false;
+    $("lightbox").hidden = true;
+    $("lb-img").removeAttribute("src");
+    document.body.style.overflow = "";
+  }
+
+  function bindLightbox() {
+    $("tbody").addEventListener("click", function (e) {
+      var btn = e.target.closest("[data-photo-i]");
+      if (!btn) return;
+      lbOpen(Number(btn.getAttribute("data-photo-i")));
+    });
+
+    // A thumbnail whose host stops serving the file should fall back to the
+    // placeholder instead of leaving a broken-image icon in the table.
+    $("tbody").addEventListener("error", function (e) {
+      var btn = e.target.tagName === "IMG" ? e.target.closest(".thumb-btn") : null;
+      if (!btn) return;
+      var span = document.createElement("span");
+      span.className = "thumb-empty";
+      span.title = "圖片載入失敗";
+      btn.parentNode.replaceChild(span, btn);
+    }, true);
+
+    $("lb-img").addEventListener("load", lbResetView);
+    $("lb-zoom-in").addEventListener("click", function () { lbZoom(1.25); });
+    $("lb-zoom-out").addEventListener("click", function () { lbZoom(1 / 1.25); });
+    $("lb-zoom-reset").addEventListener("click", lbResetView);
+    $("lb-close").addEventListener("click", lbClose);
+
+    document.addEventListener("keydown", function (e) {
+      if (!lb.open) return;
+      if (e.key === "Escape") lbClose();
+      if (e.key === "+" || e.key === "=") lbZoom(1.25);
+      if (e.key === "-" || e.key === "_") lbZoom(1 / 1.25);
+      if (e.key === "0") lbResetView();
+    });
+
+    var stage = $("lb-stage");
+    stage.addEventListener("wheel", function (e) {
+      if (!lb.open) return;
+      e.preventDefault();
+      var rect = stage.getBoundingClientRect();
+      lbZoom(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX - rect.left - rect.width / 2, e.clientY - rect.top - rect.height / 2);
+    }, { passive: false });
+
+    stage.addEventListener("pointerdown", function (e) {
+      if (e.target.id !== "lb-img" && e.target !== stage) return;
+      lb.drag = true;
+      lb.px = e.clientX;
+      lb.py = e.clientY;
+      lb.sx = lb.x;
+      lb.sy = lb.y;
+      stage.classList.add("is-dragging");
+      stage.setPointerCapture(e.pointerId);
+    });
+    stage.addEventListener("pointermove", function (e) {
+      if (!lb.drag) return;
+      lb.x = lb.sx + (e.clientX - lb.px);
+      lb.y = lb.sy + (e.clientY - lb.py);
+      lbApply();
+    });
+    function endDrag(e) {
+      if (!lb.drag) return;
+      lb.drag = false;
+      stage.classList.remove("is-dragging");
+      try { stage.releasePointerCapture(e.pointerId); } catch (err) {}
+    }
+    stage.addEventListener("pointerup", endDrag);
+    stage.addEventListener("pointercancel", endDrag);
+
+    stage.addEventListener("dblclick", function (e) {
+      if (e.target.closest("button, a")) return;
+      if (lb.scale > 1) lbResetView();
+      else lbZoom(2.5);
+    });
+
+    stage.addEventListener("touchstart", function (e) {
+      if (e.touches.length === 2) {
+        var a = e.touches[0], b = e.touches[1];
+        var dx = a.clientX - b.clientX, dy = a.clientY - b.clientY;
+        lb.pinch = Math.hypot(dx, dy);
+        lb.pinchScale = lb.scale;
+      }
+    }, { passive: true });
+    stage.addEventListener("touchmove", function (e) {
+      if (e.touches.length !== 2 || !lb.pinch) return;
+      e.preventDefault();
+      var a = e.touches[0], b = e.touches[1];
+      var dx = a.clientX - b.clientX, dy = a.clientY - b.clientY;
+      var dist = Math.hypot(dx, dy);
+      lb.scale = Math.min(8, Math.max(1, lb.pinchScale * (dist / lb.pinch)));
+      if (lb.scale === 1) { lb.x = 0; lb.y = 0; }
+      lbApply();
+    }, { passive: false });
+  }
+
   function buildGlossary() {
     $("glossary").innerHTML = DATA.glossary.map(function (g) {
       return "<div><dl><dt>" + esc(g[0]) + "</dt><dd>" + esc(g[1]) + "</dd></dl></div>";
@@ -1107,6 +1489,7 @@
   buildSelectors();
   bindQuick();
   bindInputs();
+  bindLightbox();
   buildGlossary();
   render();
 })();
