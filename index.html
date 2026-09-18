@@ -626,7 +626,7 @@
       gap: 4px 8px;
     }
     tbody td.name .desig { margin-bottom: 0; }
-    tbody td.photo { padding-top: 12px; }
+    tbody td.photo { padding: 12px 14px 8px; }
     tbody td.photo .thumb-btn,
     tbody td.photo .thumb-empty { width: 96px; height: 72px; }
     tbody td.con { white-space: nowrap; }
@@ -829,7 +829,7 @@
 
   var COLUMNS = [
     { key: "month", label: "月份" },
-    { key: "photo", label: "圖", sort: false },
+    { key: "photo", label: "圖片", sort: false },
     { key: "name",  label: "名稱" },
     { key: "mag",   label: "星等" },
     { key: "size",  label: "視徑" },
@@ -1281,7 +1281,7 @@
     $("tbody").innerHTML = rows.map(function (o) {
       return "<tr>" +
         cell("月份", MONTH_NAMES[o.month - 1], "month") +
-        cell("圖", photoCell(o), "photo") +
+        cell("圖片", photoCell(o), "photo") +
         cell("名稱", nameCell(o), "name") +
         cell("星等", o.magText || "—", "num" + (magOk(o) ? " mark-ok" : "")) +
         cell("視徑", o.sizeText || "—", "num" + (sizeOk(o) ? " mark-ok" : "")) +
