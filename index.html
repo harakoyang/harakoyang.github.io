@@ -1575,6 +1575,9 @@
     lbResetView();
     $("lightbox").hidden = false;
     document.body.style.overflow = "hidden";
+    // Push a history entry so the browser Back button closes the lightbox
+    // instead of leaving the page.
+    history.pushState({lb: true}, "");
   }
 
   function lbClose() {
@@ -1588,6 +1591,12 @@
     $("lightbox").hidden = true;
     $("lb-img").removeAttribute("src");
     document.body.style.overflow = "";
+    // If we still own the top history entry, pop it so the URL/back state
+    // stays consistent. (When close was triggered by the user pressing
+    // Back, the entry is already gone and history.state won't be ours.)
+    if (history.state && history.state.lb) {
+      history.back();
+    }
   }
 
   function bindLightbox() {
@@ -1622,6 +1631,8 @@
       $("lb-stage").classList.remove("is-loading");
     });
     window.addEventListener("resize", function () { if (lb.open) lbApply(); });
+    // Browser Back closes the lightbox instead of leaving the page.
+    window.addEventListener("popstate", function () { if (lb.open) lbClose(); });
 
     document.addEventListener("keydown", function (e) {
       if (!lb.open) return;
