@@ -541,24 +541,6 @@
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
   }
-  /* Floats over the image so it stays reachable at any window width. */
-  .lb-close {
-    position: absolute;
-    top: 14px;
-    right: 14px;
-    z-index: 2;
-    width: 44px;
-    height: 44px;
-    border: 1px solid var(--line-strong);
-    border-radius: 50%;
-    background: rgba(6, 12, 30, 0.82);
-    color: var(--text);
-    font-size: 26px;
-    line-height: 1;
-    cursor: pointer;
-  }
-  .lb-close:hover { background: rgba(140, 170, 230, 0.28); }
-  .lb-close:focus-visible { outline: 2px solid var(--ok); outline-offset: 2px; }
   .lb-indicator {
     position: absolute;
     left: 50%;
@@ -577,7 +559,7 @@
     z-index: 2;
   }
   .lb-indicator.is-visible { opacity: 1; }
-  .lb-caption { min-width: 0; flex: 1; }
+  .lb-caption { min-width: 0; flex: 1; padding-left: 24px; }
   #lb-title { font-size: 14px; }
   #lb-credit {
     margin-top: 2px;
@@ -860,7 +842,6 @@
 <div id="lightbox" style="--lb-bar: 0px;" hidden="">
   <div class="lb-stage" id="lb-stage">
     <img id="lb-img" alt="IC2948 IC2944 · 奔雞星雲 半人馬座λ星雲" referrerpolicy="no-referrer" style="transform: translate(-50%, -50%) translate(0px, 0px) scale(1);">
-    <button type="button" class="lb-close" id="lb-close" aria-label="關閉大圖" title="關閉（Esc）">×</button>
     <div class="lb-indicator" id="lb-indicator"></div>
   </div>
   <div class="lb-ui">
@@ -1531,7 +1512,6 @@
     lbResetView();
     $("lightbox").hidden = false;
     document.body.style.overflow = "hidden";
-    $("lb-close").focus();
   }
 
   function lbClose() {
@@ -1566,7 +1546,6 @@
 
     $("lb-img").addEventListener("load", lbResetView);
     window.addEventListener("resize", function () { if (lb.open) lbApply(); });
-    $("lb-close").addEventListener("click", lbClose);
 
     document.addEventListener("keydown", function (e) {
       if (!lb.open) return;
@@ -1607,6 +1586,7 @@
         lb.y = lb.sy + (e.clientY - lb.py);
         lbClamp();
         lbApply();
+        if (Math.hypot(e.clientX - lb.px, e.clientY - lb.py) > 5) lb.dragged = true;
       } else if (lb.scale === 1 && !lb.dragged) {
         var dx = e.clientX - lb.px;
         var dy = e.clientY - lb.py;
