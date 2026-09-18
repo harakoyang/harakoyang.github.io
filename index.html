@@ -468,7 +468,7 @@
     border-radius: 8px;
     overflow: hidden;
     background: #070d22;
-    cursor: zoom-in;
+    cursor: pointer;
   }
   .thumb-btn img {
     display: block;
@@ -1536,10 +1536,11 @@
     stage.addEventListener("pointerup", endDrag);
     stage.addEventListener("pointercancel", endDrag);
 
-    stage.addEventListener("dblclick", function (e) {
+    // A single click on the stage (image or backdrop) closes the lightbox.
+    // Clicks on buttons/links (close, zoom, source) are ignored.
+    stage.addEventListener("click", function (e) {
       if (e.target.closest("button, a")) return;
-      if (lb.scale > 1) lbResetView();
-      else lbZoom(2.5);
+      lbClose();
     });
 
     stage.addEventListener("touchstart", function (e) {
