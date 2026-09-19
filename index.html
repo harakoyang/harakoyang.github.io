@@ -1235,7 +1235,6 @@
     });
 
     $("sort").innerHTML =
-      '<option value="i|1">原始順序（月份 · 赤經）</option>' +
       COLUMNS.filter(function (c) { return c.sort !== false; }).map(function (c) {
         return '<option value="' + c.key + '|1">' + esc(c.label) + ' ↑</option>' +
                '<option value="' + c.key + '|-1">' + esc(c.label) + ' ↓</option>';
