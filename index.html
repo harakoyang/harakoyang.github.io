@@ -1740,10 +1740,21 @@
       lb.drag = false;
       stage.classList.remove("is-dragging");
       try { stage.releasePointerCapture(e.pointerId); } catch (err) {}
+      if (e.type === "pointercancel") return;
       // At scale 1, a horizontal swipe navigates to the previous/next object.
       if (!wasDragging && lb.scale === 1 && lb.dragged) {
         var dx = e.clientX - lb.px;
         lbNav(dx < 0 ? 1 : -1);
+        return;
+      }
+      // Tap at scale 1: start the close timer here as a fallback for mobile
+      // browsers that delay or suppress click events after a touch gesture.
+      // On desktop, the click handler sees the timer is already set and skips.
+      if (!wasDragging && lb.scale === 1 && !lb.dragged && !lb.clickTimer) {
+        lb.clickTimer = setTimeout(function () {
+          lb.clickTimer = null;
+          lbClose();
+        }, 250);
       }
     }
     stage.addEventListener("pointerup", endDrag);
