@@ -821,7 +821,7 @@
       </div>
       <div class="field">
         <label for="sort">排序</label>
-        <select id="sort"><option value="i|1">原始順序（月份 · 赤經）</option><option value="month|1">月份 ↑</option><option value="month|-1">月份 ↓</option><option value="name|1">名稱 ↑</option><option value="name|-1">名稱 ↓</option><option value="mag|1">星等 ↑</option><option value="mag|-1">星等 ↓</option><option value="size|1">視徑 ↑</option><option value="size|-1">視徑 ↓</option><option value="ra|1">RA ↑</option><option value="ra|-1">RA ↓</option><option value="dec|1">DEC ↑</option><option value="dec|-1">DEC ↓</option><option value="con|1">星座 ↑</option><option value="con|-1">星座 ↓</option></select>
+        <select id="sort"><option value="month|1">月份 ↑</option><option value="month|-1">月份 ↓</option><option value="name|1">名稱 ↑</option><option value="name|-1">名稱 ↓</option><option value="mag|1">星等 ↑</option><option value="mag|-1">星等 ↓</option><option value="size|1">視徑 ↑</option><option value="size|-1">視徑 ↓</option><option value="ra|1">RA ↑</option><option value="ra|-1">RA ↓</option><option value="dec|1">DEC ↑</option><option value="dec|-1">DEC ↓</option><option value="con|1">星座 ↑</option><option value="con|-1">星座 ↓</option></select>
       </div>
     </div>
 
@@ -943,7 +943,7 @@
     ra: { min: null, max: null },
     dec: { min: null, max: null },
     hideUnsuitableDec: false,
-    sortKey: "i",
+    sortKey: "month",
     sortDir: 1
   };
 
@@ -961,7 +961,11 @@
   }
 
   function decWindow() {
-    return { lo: state.lat - ALT_SPAN, hi: state.lat + ALT_SPAN };
+    // Clamp to the physical declination range [-90, 90]; near the poles the
+    // window would otherwise extend beyond the sphere.
+    var lo = Math.max(-90, state.lat - ALT_SPAN);
+    var hi = Math.min(90, state.lat + ALT_SPAN);
+    return { lo: lo, hi: hi };
   }
 
   function formatDeg(d) {
@@ -1231,8 +1235,18 @@
       set: function (v) { state.size.min = v ? state.sizeMin : null; }
     },
     dec: {
-      on: function () { return state.hideUnsuitableDec; },
-      set: function (v) { state.hideUnsuitableDec = v; }
+      on: function () { return state.dec.min !== null || state.dec.max !== null; },
+      set: function (v) {
+        if (v) {
+          var w = decWindow();
+          // Defensive clamp: keep the backfilled dec range inside [-90, 90].
+          state.dec.min = Math.max(-90, Math.min(90, w.lo));
+          state.dec.max = Math.max(-90, Math.min(90, w.hi));
+        } else {
+          state.dec.min = null;
+          state.dec.max = null;
+        }
+      }
     }
   };
 
@@ -1271,7 +1285,7 @@
       state.ra = { min: null, max: null };
       state.dec = { min: null, max: null };
       state.hideUnsuitableDec = false;
-      state.sortKey = "i";
+      state.sortKey = "month";
       state.sortDir = 1;
       Object.keys(selectors).forEach(function (k) { selectors[k].sync(); });
       syncInputs();
