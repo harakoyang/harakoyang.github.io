@@ -1544,11 +1544,17 @@
     sy: 0,
     pinch: 0,
     pinchScale: 1,
-    afterPinch: false,
+    // Timestamp of the last pinch activity (touchstart/move/end). Any close
+    // attempt within PINCH_SUPPRESS_MS after this is treated as a
+    // misinterpreted pinch release and ignored. Time-based (not a boolean
+    // flag) because iOS/Android fire pointerup/touchend/click in different
+    // orders and may synthesize a pointerdown that would clear a flag.
+    pinchEndTime: 0,
     clickTimer: null,
     indicatorTimer: null,
     lastTap: 0
   };
+  var PINCH_SUPPRESS_MS = 500;
 
   function lbApply() {
     var bar = document.querySelector(".lb-ui").offsetHeight;
@@ -1814,8 +1820,6 @@
       // A two-finger pinch is handled by the touch listeners; don't let a
       // second pointer start a competing drag.
       if (e.pointerType === "touch" && lb.pinch) return;
-      // Fresh touch: clear the after-pinch guard so a real tap can close.
-      lb.afterPinch = false;
       lb.px = e.clientX;
       lb.py = e.clientY;
       lb.sx = lb.x;
@@ -1848,11 +1852,9 @@
       stage.classList.remove("is-dragging");
       try { stage.releasePointerCapture(e.pointerId); } catch (err) {}
       if (e.type === "pointercancel") return;
-      // The release of a two-finger pinch must not be read as a tap-to-close.
-      // `afterPinch` is set when the pinch ends (touchend < 2 touches) and
-      // only cleared on the next clean pointerdown — it must persist so both
-      // this pointerup AND any synthesized click that follows are suppressed.
-      if (lb.afterPinch) return;
+      // If a pinch just ended (within the suppression window), this pointerup
+      // is the release of the pinch — never treat it as a tap-to-close.
+      if (Date.now() - lb.pinchEndTime < PINCH_SUPPRESS_MS) return;
       // At scale 1, a horizontal swipe navigates to the previous/next object.
       if (!wasDragging && lb.scale === 1 && lb.dragged) {
         var dx = e.clientX - lb.px;
@@ -1879,9 +1881,9 @@
     // path — the native dblclick handler below is kept only as a no-op guard.
     stage.addEventListener("click", function (e) {
       if (e.target.closest("button, a")) return;
-      // A synthesized click that follows a pinch release must not close.
-      // afterPinch is cleared on the next real pointerdown.
-      if (lb.afterPinch) return;
+      // A synthesized click that follows a pinch release (within the
+      // suppression window) must not close. The window expires naturally.
+      if (Date.now() - lb.pinchEndTime < PINCH_SUPPRESS_MS) return;
       if (lb.dragged) { lb.dragged = false; return; }
       var now = Date.now();
       if (now - lb.lastTap < 250 && lb.scale > 1) {
@@ -1918,11 +1920,9 @@
         lb.pinchScale = lb.scale;
         lb.pinchX = lb.x;
         lb.pinchY = lb.y;
-        // Mark the gesture as a pinch IMMEDIATELY (not waiting for touchend),
-        // because on iOS Safari pointerup fires BEFORE touchend — if we only
-        // set afterPinch in touchend, endDrag (pointerup) would already have
-        // scheduled a close. Set here so the flag is in place for the release.
-        lb.afterPinch = true;
+        // Refresh the pinch timestamp at the start of every two-finger
+        // gesture so the close-suppression window stays live throughout.
+        lb.pinchEndTime = Date.now();
         // Midpoint of the two fingers, relative to the stage center. The
         // image center is offset up by bar/2 (see lbApply), so compensate.
         var rect = stage.getBoundingClientRect();
@@ -1952,12 +1952,16 @@
       if (lb.scale === 1) { lb.x = 0; lb.y = 0; }
       lbClamp();
       lbApply();
+      // Keep the suppression window alive for the whole pinch so the release
+      // (which may fire pointerup before/after touchend depending on the
+      // browser) is always covered.
+      lb.pinchEndTime = Date.now();
     }, { passive: false });
     stage.addEventListener("touchend", function (e) {
       if (e.touches.length < 2) {
-        // A pinch just ended (or the last finger lifted). Mark it so the
-        // following pointerup isn't mistaken for a tap-to-close at scale 1.
-        if (lb.pinch) lb.afterPinch = true;
+        // Pinch ended: stamp the time so the suppression window covers the
+        // pointerup/click that follow. lb.pinch is cleared below.
+        if (lb.pinch) lb.pinchEndTime = Date.now();
         lb.pinch = 0;
       }
     }, { passive: true });
