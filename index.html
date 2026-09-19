@@ -1918,6 +1918,11 @@
         lb.pinchScale = lb.scale;
         lb.pinchX = lb.x;
         lb.pinchY = lb.y;
+        // Mark the gesture as a pinch IMMEDIATELY (not waiting for touchend),
+        // because on iOS Safari pointerup fires BEFORE touchend — if we only
+        // set afterPinch in touchend, endDrag (pointerup) would already have
+        // scheduled a close. Set here so the flag is in place for the release.
+        lb.afterPinch = true;
         // Midpoint of the two fingers, relative to the stage center. The
         // image center is offset up by bar/2 (see lbApply), so compensate.
         var rect = stage.getBoundingClientRect();
