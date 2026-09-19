@@ -1698,12 +1698,6 @@
       lbZoom(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX - rect.left - rect.width / 2, e.clientY - rect.top - rect.height / 2 + bar / 2);
     }, { passive: false });
 
-    // Show the position indicator while the pointer is over the stage,
-    // auto-hide 3s after the last movement.
-    stage.addEventListener("mousemove", function () {
-      if (lb.open) lbShowIndicator();
-    });
-
     stage.addEventListener("pointerdown", function (e) {
       if (e.target.id !== "lb-img" && e.target !== stage && !e.target.classList.contains("lb-viewport")) return;
       // A two-finger pinch is handled by the touch listeners; don't let a
