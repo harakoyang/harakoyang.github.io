@@ -219,7 +219,12 @@
     transition: color .15s, border-color .15s, background .15s;
   }
 
-  .chip:hover { color: var(--text); border-color: var(--line-strong); }
+  /* Only apply hover on devices that truly support it (mouse/trackpad).
+     Mobile browsers leave :hover "stuck" after a tap, which made a toggled-off
+     chip keep the hover styling until the next tap elsewhere. */
+  @media (hover: hover) {
+    .chip:hover { color: var(--text); border-color: var(--line-strong); }
+  }
   .chip[aria-pressed="true"] { color: #06102a; background: var(--text); border-color: var(--text); font-weight: 600; }
   .chip[data-tone="ok"][aria-pressed="true"] { background: var(--ok); border-color: var(--ok); }
   .chip[data-tone="bad"][aria-pressed="true"] { background: var(--bad); border-color: var(--bad); }
@@ -573,6 +578,16 @@
     background: rgba(6, 12, 30, 0.26);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
+  }
+  /* When zoomed, the scaled image (a composited/transformed layer) breaks
+     backdrop-filter sampling on iOS Safari — the bar shows the raw translucent
+     fill, which is too see-through. Boost the background opacity instead.
+     Scoped to iOS Safari only via -webkit-touch-callout (other browsers keep
+     the working frosted-glass effect). */
+  @supports (-webkit-touch-callout: none) {
+    .lb-stage.is-zoomable ~ .lb-ui {
+      background: rgba(6, 12, 30, 0.78);
+    }
   }
   .lb-indicator {
     position: absolute;
@@ -1500,7 +1515,8 @@
     pinch: 0,
     pinchScale: 1,
     clickTimer: null,
-    indicatorTimer: null
+    indicatorTimer: null,
+    lastTap: 0
   };
 
   function lbApply() {
@@ -1805,28 +1821,35 @@
     stage.addEventListener("pointercancel", endDrag);
 
     // Single click closes; double click resets the view.
+    // iOS Safari does not fire `dblclick` on touch-action:none elements, so
+    // we detect double-tap ourselves via a timestamp and trigger the reset
+    // directly from the click handler. Desktop still benefits from the same
+    // path — the native dblclick handler below is kept only as a no-op guard.
     stage.addEventListener("click", function (e) {
       if (e.target.closest("button, a")) return;
       if (lb.dragged) { lb.dragged = false; return; }
-      if (lb.clickTimer) return; // second click of a double-click; dblclick handles it
+      var now = Date.now();
+      if (now - lb.lastTap < 250 && lb.scale > 1) {
+        // Second tap of a double-tap: cancel the pending close and reset zoom.
+        lb.lastTap = 0;
+        if (lb.clickTimer) { clearTimeout(lb.clickTimer); lb.clickTimer = null; }
+        var img = $("lb-img");
+        img.style.transition = "transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)";
+        lbResetView();
+        setTimeout(function () { img.style.transition = ""; }, 320);
+        return;
+      }
+      lb.lastTap = now;
+      if (lb.clickTimer) return; // already armed by the pointerup fallback
       lb.clickTimer = setTimeout(function () {
         lb.clickTimer = null;
         lbClose();
       }, 250);
     });
     stage.addEventListener("dblclick", function (e) {
-      if (e.target.closest("button, a")) return;
-      // At scale 1, double-click is a no-op (no zoom to reset). Return
-      // BEFORE clearing the close timer — on mobile, a swipe can produce a
-      // delayed synthesized click that arrives just after the user's real
-      // tap, forming a dblclick. Clearing the timer here would let that
-      // ghost click swallow the pending close.
-      if (lb.scale === 1) return;
-      if (lb.clickTimer) { clearTimeout(lb.clickTimer); lb.clickTimer = null; }
-      var img = $("lb-img");
-      img.style.transition = "transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)";
-      lbResetView();
-      setTimeout(function () { img.style.transition = ""; }, 320);
+      // Handled by the click-based double-tap detection above; just suppress
+      // any native double-click default action.
+      e.preventDefault();
     });
 
     stage.addEventListener("touchstart", function (e) {
