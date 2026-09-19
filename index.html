@@ -219,7 +219,12 @@
     transition: color .15s, border-color .15s, background .15s;
   }
 
-  .chip:hover { color: var(--text); border-color: var(--line-strong); }
+  /* Only apply hover on devices that truly support it (mouse/trackpad).
+     Mobile browsers leave :hover "stuck" after a tap, which made a toggled-off
+     chip keep the hover styling until the next tap elsewhere. */
+  @media (hover: hover) {
+    .chip:hover { color: var(--text); border-color: var(--line-strong); }
+  }
   .chip[aria-pressed="true"] { color: #06102a; background: var(--text); border-color: var(--text); font-weight: 600; }
   .chip[data-tone="ok"][aria-pressed="true"] { background: var(--ok); border-color: var(--ok); }
   .chip[data-tone="bad"][aria-pressed="true"] { background: var(--bad); border-color: var(--bad); }
