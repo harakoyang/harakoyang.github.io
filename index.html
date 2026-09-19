@@ -1850,11 +1850,9 @@
       if (e.type === "pointercancel") return;
       // The release of a two-finger pinch must not be read as a tap-to-close.
       // `afterPinch` is set when the pinch ends (touchend < 2 touches) and
-      // cleared on the next clean pointerdown.
-      if (lb.afterPinch) {
-        lb.afterPinch = false;
-        return;
-      }
+      // only cleared on the next clean pointerdown — it must persist so both
+      // this pointerup AND any synthesized click that follows are suppressed.
+      if (lb.afterPinch) return;
       // At scale 1, a horizontal swipe navigates to the previous/next object.
       if (!wasDragging && lb.scale === 1 && lb.dragged) {
         var dx = e.clientX - lb.px;
@@ -1881,6 +1879,9 @@
     // path — the native dblclick handler below is kept only as a no-op guard.
     stage.addEventListener("click", function (e) {
       if (e.target.closest("button, a")) return;
+      // A synthesized click that follows a pinch release must not close.
+      // afterPinch is cleared on the next real pointerdown.
+      if (lb.afterPinch) return;
       if (lb.dragged) { lb.dragged = false; return; }
       var now = Date.now();
       if (now - lb.lastTap < 250 && lb.scale > 1) {
