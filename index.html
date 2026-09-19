@@ -1494,7 +1494,13 @@
     lb.scale = 1;
     lb.x = 0;
     lb.y = 0;
-    lb.dragged = false;
+    // Note: lb.dragged is intentionally NOT reset here. It marks the most
+    // recent gesture so the click synthesized after a touch swipe is
+    // ignored by the click handler (which would otherwise close the
+    // lightbox). It is reset on the next pointerdown instead. Resetting it
+    // here used to let lbOpen → lbResetView (called from lbNav during a
+    // swipe) clear the flag before the post-swipe click arrived, which then
+    // scheduled a 250ms close timer and swallowed the user's real tap.
     lb.drag = false;
     lbApply();
   }
