@@ -1501,7 +1501,6 @@
     // here used to let lbOpen → lbResetView (called from lbNav during a
     // swipe) clear the flag before the post-swipe click arrived, which then
     // scheduled a 250ms close timer and swallowed the user's real tap.
-    lb.drag = false;
     lbApply();
   }
 
