@@ -1761,8 +1761,13 @@
     });
     stage.addEventListener("dblclick", function (e) {
       if (e.target.closest("button, a")) return;
-      if (lb.clickTimer) { clearTimeout(lb.clickTimer); lb.clickTimer = null; }
+      // At scale 1, double-click is a no-op (no zoom to reset). Return
+      // BEFORE clearing the close timer — on mobile, a swipe can produce a
+      // delayed synthesized click that arrives just after the user's real
+      // tap, forming a dblclick. Clearing the timer here would let that
+      // ghost click swallow the pending close.
       if (lb.scale === 1) return;
+      if (lb.clickTimer) { clearTimeout(lb.clickTimer); lb.clickTimer = null; }
       var img = $("lb-img");
       img.style.transition = "transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)";
       lbResetView();
