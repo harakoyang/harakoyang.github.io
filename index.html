@@ -579,15 +579,36 @@
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
   }
-  /* When zoomed, the scaled image (a composited/transformed layer) breaks
-     backdrop-filter sampling on iOS Safari — the bar shows the raw translucent
-     fill, which is too see-through. Boost the background opacity instead.
-     Scoped to iOS Safari only via -webkit-touch-callout (other browsers keep
-     the working frosted-glass effect). */
-  @supports (-webkit-touch-callout: none) {
-    .lb-stage.is-zoomable ~ .lb-ui {
-      background: rgba(6, 12, 30, 0.78);
-    }
+  /* iOS Safari fails to blur a scaled (composited) image via backdrop-filter
+     — the glass would show the sharp image through the bare tint. So the bar
+     gets its own frost: a blurred mirror of #lb-img kept in lockstep by JS
+     (same src, same transform) and clipped to the bar strip. Where
+     backdrop-filter does work this simply adds a touch more blur. Faded out
+     at scale 1, where the photo never reaches the bar. */
+  .lb-glass {
+    position: absolute;
+    inset: 0;
+    z-index: 4; /* above the photo (2), below the bar (5) */
+    clip-path: inset(calc(100% - var(--lb-bar, 0px)) 0 0 0);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .2s;
+  }
+  .lb-stage.is-zoomable ~ .lb-glass { opacity: 1; }
+  /* Geometry mirrors #lb-img exactly so the blur stays registered with the
+     photo; the blur radius itself is set from JS as 16px / scale, because
+     CSS blur applies in the image's local space, before the zoom transform. */
+  #lb-glass-img {
+    display: block;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 100%;
+    height: calc(100% - var(--lb-bar, 0px));
+    max-width: 100%;
+    max-height: calc(100% - var(--lb-bar, 0px));
+    object-fit: contain;
+    transform-origin: center center;
   }
   .lb-indicator {
     position: absolute;
@@ -894,6 +915,7 @@
       <div class="lb-indicator" id="lb-indicator"></div>
     </div>
   </div>
+  <div class="lb-glass" aria-hidden="true"><img id="lb-glass-img" alt="" referrerpolicy="no-referrer"></div>
   <div class="lb-ui">
     <div class="lb-caption">
       <div id="lb-title">IC 2944 · IC2948 IC2944 · 奔雞星雲 半人馬座λ星雲</div>
@@ -1526,7 +1548,12 @@
     // up by bar/2 so at scale 1 it sits exactly above the bottom bar. When
     // zoomed it grows from that center and runs under the translucent bar.
     var t = "translate(-50%, -50%) translate(" + lb.x + "px, " + (lb.y - bar / 2) + "px) scale(" + lb.scale + ")";
+    var glass = $("lb-glass-img");
     $("lb-img").style.transform = t;
+    // Keep the frosted mirror (see .lb-glass) registered with the photo and
+    // hold a constant ~16px frost on screen (CSS blur runs before the scale).
+    glass.style.transform = t;
+    glass.style.filter = "blur(" + Math.round(1600 / lb.scale) / 100 + "px)";
     $("lb-stage").classList.toggle("is-zoomable", lb.scale > 1);
   }
 
@@ -1629,6 +1656,7 @@
     var obj = OBJECTS[i];
     var caption = obj ? objectCaption(obj) : (img.title || "");
     var lbImg = $("lb-img");
+    var glassImg = $("lb-glass-img");
     var stage = $("lb-stage");
     // Show the (cached) thumbnail instantly on the SAME element that will
     // hold the full image — one box, one transform, no chance of the two
@@ -1639,11 +1667,18 @@
     // right away.
     lbImg.removeAttribute("src");
     lbImg.src = imgUrl(img.thumb || img.full);
+    glassImg.removeAttribute("src");
+    glassImg.src = lbImg.src;
     lbImg.alt = caption;
     stage.classList.add("is-loading");
     if (img.thumb && img.full !== img.thumb) {
       var pre = new Image();
-      pre.onload = function () { if (lb.currentSrc === imgUrl(img.full)) lbImg.src = imgUrl(img.full); };
+      pre.onload = function () {
+        if (lb.currentSrc === imgUrl(img.full)) {
+          lbImg.src = imgUrl(img.full);
+          glassImg.src = lbImg.src;
+        }
+      };
       pre.src = imgUrl(img.full);
     }
     $("lb-title").textContent = caption;
@@ -1687,6 +1722,7 @@
     $("lb-stage").classList.remove("is-loading");
     $("lightbox").hidden = true;
     $("lb-img").removeAttribute("src");
+    $("lb-glass-img").removeAttribute("src");
     document.body.style.overflow = "";
     // Restore the exact scroll position we had before opening. The browser's
     // smooth scroll and popstate scroll restoration could otherwise move the
@@ -1834,9 +1870,12 @@
         lb.lastTap = 0;
         if (lb.clickTimer) { clearTimeout(lb.clickTimer); lb.clickTimer = null; }
         var img = $("lb-img");
-        img.style.transition = "transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)";
+        var glass = $("lb-glass-img");
+        var resetTransition = "transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)";
+        img.style.transition = resetTransition;
+        glass.style.transition = resetTransition;
         lbResetView();
-        setTimeout(function () { img.style.transition = ""; }, 320);
+        setTimeout(function () { img.style.transition = ""; glass.style.transition = ""; }, 320);
         return;
       }
       lb.lastTap = now;
