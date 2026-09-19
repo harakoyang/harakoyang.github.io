@@ -582,9 +582,8 @@
   /* iOS Safari fails to blur a scaled (composited) image via backdrop-filter
      — the glass would show the sharp image through the bare tint. So the bar
      gets its own frost: a blurred mirror of #lb-img kept in lockstep by JS
-     (same src, same transform) and clipped to the bar strip. Where
-     backdrop-filter does work this simply adds a touch more blur. Faded out
-     at scale 1, where the photo never reaches the bar. */
+     (same src, same transform) and clipped to the bar strip. Faded out at
+     scale 1, where the photo never reaches the bar. */
   .lb-glass {
     position: absolute;
     inset: 0;
@@ -595,21 +594,15 @@
     transition: opacity .2s;
   }
   .lb-stage.is-zoomable ~ .lb-glass { opacity: 1; }
-  /* The blur lives on a wrapper and is NEVER rewritten: rewriting an inline
-     filter every frame (the old 16px/scale compensation) forces iOS Safari
-     to re-rasterize the whole filtered image per pinch frame, so the frost
-     froze mid-zoom. A static filter over the transformed img stays on the
-     cheap GPU path — the frost follows the zoom like the photo itself. The
-     filter also runs AFTER the img transform, so on-screen blur is a
-     constant 16px at any zoom, with no JS compensation needed. */
-  .lb-glass-blur {
-    position: absolute;
-    inset: 0;
-    filter: blur(16px);
-    -webkit-filter: blur(16px);
-  }
-  /* Geometry mirrors #lb-img exactly so the blur stays registered with the
-     photo; only the transform is synced from JS, per frame. */
+  /* The blur lives on the mirrored image itself, as a STATIC value that JS
+     never rewrites. Because CSS filter runs before the element's transform,
+     the 16px blur is in the image's local space and scales with the zoom —
+     at 2x the frost is 32px on screen, matching the photo's real-time size.
+     Keeping the filter on the same element as the transform (rather than on
+     a wrapper) also avoids iOS Safari caching a stale raster of the filtered
+     layer across repeated zoom cycles. A static filter does not trigger
+     per-frame re-rasterization; only the transform is updated by JS, which
+     stays on the cheap GPU compositor path. */
   #lb-glass-img {
     display: block;
     position: absolute;
@@ -621,6 +614,9 @@
     max-height: calc(100% - var(--lb-bar, 0px));
     object-fit: contain;
     transform-origin: center center;
+    filter: blur(16px);
+    -webkit-filter: blur(16px);
+    will-change: transform;
   }
   .lb-indicator {
     position: absolute;
@@ -927,7 +923,7 @@
       <div class="lb-indicator" id="lb-indicator"></div>
     </div>
   </div>
-  <div class="lb-glass" aria-hidden="true"><div class="lb-glass-blur"><img id="lb-glass-img" alt="" referrerpolicy="no-referrer"></div></div>
+  <div class="lb-glass" aria-hidden="true"><img id="lb-glass-img" alt="" referrerpolicy="no-referrer"></div>
   <div class="lb-ui">
     <div class="lb-caption">
       <div id="lb-title">IC 2944 · IC2948 IC2944 · 奔雞星雲 半人馬座λ星雲</div>
@@ -1548,6 +1544,7 @@
     sy: 0,
     pinch: 0,
     pinchScale: 1,
+    afterPinch: false,
     clickTimer: null,
     indicatorTimer: null,
     lastTap: 0
@@ -1562,9 +1559,9 @@
     var t = "translate(-50%, -50%) translate(" + lb.x + "px, " + (lb.y - bar / 2) + "px) scale(" + lb.scale + ")";
     $("lb-img").style.transform = t;
     // Keep the frosted mirror (see .lb-glass) registered with the photo.
-    // Transform only — the static blur lives on the .lb-glass-blur wrapper,
-    // so iOS never re-rasterizes the filter mid-pinch and the frost follows
-    // the zoom; being post-transform it is 16px on screen at any scale.
+    // Transform only — the static blur(16px) lives on the mirrored image
+    // itself, so iOS never re-rasterizes the filter mid-pinch; because the
+    // filter runs before the transform, the frost scales with the photo.
     $("lb-glass-img").style.transform = t;
     $("lb-stage").classList.toggle("is-zoomable", lb.scale > 1);
   }
@@ -1817,6 +1814,8 @@
       // A two-finger pinch is handled by the touch listeners; don't let a
       // second pointer start a competing drag.
       if (e.pointerType === "touch" && lb.pinch) return;
+      // Fresh touch: clear the after-pinch guard so a real tap can close.
+      lb.afterPinch = false;
       lb.px = e.clientX;
       lb.py = e.clientY;
       lb.sx = lb.x;
@@ -1849,6 +1848,13 @@
       stage.classList.remove("is-dragging");
       try { stage.releasePointerCapture(e.pointerId); } catch (err) {}
       if (e.type === "pointercancel") return;
+      // The release of a two-finger pinch must not be read as a tap-to-close.
+      // `afterPinch` is set when the pinch ends (touchend < 2 touches) and
+      // cleared on the next clean pointerdown.
+      if (lb.afterPinch) {
+        lb.afterPinch = false;
+        return;
+      }
       // At scale 1, a horizontal swipe navigates to the previous/next object.
       if (!wasDragging && lb.scale === 1 && lb.dragged) {
         var dx = e.clientX - lb.px;
@@ -1942,7 +1948,12 @@
       lbApply();
     }, { passive: false });
     stage.addEventListener("touchend", function (e) {
-      if (e.touches.length < 2) lb.pinch = 0;
+      if (e.touches.length < 2) {
+        // A pinch just ended (or the last finger lifted). Mark it so the
+        // following pointerup isn't mistaken for a tap-to-close at scale 1.
+        if (lb.pinch) lb.afterPinch = true;
+        lb.pinch = 0;
+      }
     }, { passive: true });
   }
 
