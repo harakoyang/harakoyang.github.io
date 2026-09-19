@@ -1299,6 +1299,12 @@
 
   /* ---------- Range / text inputs ---------- */
 
+  // Bounds for clamping; only ra/dec are bounded (mag/size are open-ended)
+  var RANGE_BOUNDS = {
+    ra:  { min: 0,   max: 24  },
+    dec: { min: -90, max: 90  }
+  };
+
   var RANGES = [
     ["mag", "mag-min", "mag-max"],
     ["size", "size-min", "size-max"],
@@ -1308,9 +1314,16 @@
 
   function bindInputs() {
     RANGES.forEach(function (r) {
+      var bounds = RANGE_BOUNDS[r[0]];
       [["min", r[1]], ["max", r[2]]].forEach(function (pair) {
         $(pair[1]).addEventListener("input", function () {
-          state[r[0]][pair[0]] = num(this);
+          var v = num(this);
+          // Clamp to [min,max] and write the clamped value back to the field
+          if (bounds && v !== null) {
+            if (v < bounds.min) { v = bounds.min; this.value = v; }
+            else if (v > bounds.max) { v = bounds.max; this.value = v; }
+          }
+          state[r[0]][pair[0]] = v;
           render();
         });
       });
