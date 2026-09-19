@@ -595,9 +595,21 @@
     transition: opacity .2s;
   }
   .lb-stage.is-zoomable ~ .lb-glass { opacity: 1; }
+  /* The blur lives on a wrapper and is NEVER rewritten: rewriting an inline
+     filter every frame (the old 16px/scale compensation) forces iOS Safari
+     to re-rasterize the whole filtered image per pinch frame, so the frost
+     froze mid-zoom. A static filter over the transformed img stays on the
+     cheap GPU path — the frost follows the zoom like the photo itself. The
+     filter also runs AFTER the img transform, so on-screen blur is a
+     constant 16px at any zoom, with no JS compensation needed. */
+  .lb-glass-blur {
+    position: absolute;
+    inset: 0;
+    filter: blur(16px);
+    -webkit-filter: blur(16px);
+  }
   /* Geometry mirrors #lb-img exactly so the blur stays registered with the
-     photo; the blur radius itself is set from JS as 16px / scale, because
-     CSS blur applies in the image's local space, before the zoom transform. */
+     photo; only the transform is synced from JS, per frame. */
   #lb-glass-img {
     display: block;
     position: absolute;
@@ -915,7 +927,7 @@
       <div class="lb-indicator" id="lb-indicator"></div>
     </div>
   </div>
-  <div class="lb-glass" aria-hidden="true"><img id="lb-glass-img" alt="" referrerpolicy="no-referrer"></div>
+  <div class="lb-glass" aria-hidden="true"><div class="lb-glass-blur"><img id="lb-glass-img" alt="" referrerpolicy="no-referrer"></div></div>
   <div class="lb-ui">
     <div class="lb-caption">
       <div id="lb-title">IC 2944 · IC2948 IC2944 · 奔雞星雲 半人馬座λ星雲</div>
@@ -1548,12 +1560,12 @@
     // up by bar/2 so at scale 1 it sits exactly above the bottom bar. When
     // zoomed it grows from that center and runs under the translucent bar.
     var t = "translate(-50%, -50%) translate(" + lb.x + "px, " + (lb.y - bar / 2) + "px) scale(" + lb.scale + ")";
-    var glass = $("lb-glass-img");
     $("lb-img").style.transform = t;
-    // Keep the frosted mirror (see .lb-glass) registered with the photo and
-    // hold a constant ~16px frost on screen (CSS blur runs before the scale).
-    glass.style.transform = t;
-    glass.style.filter = "blur(" + Math.round(1600 / lb.scale) / 100 + "px)";
+    // Keep the frosted mirror (see .lb-glass) registered with the photo.
+    // Transform only — the static blur lives on the .lb-glass-blur wrapper,
+    // so iOS never re-rasterizes the filter mid-pinch and the frost follows
+    // the zoom; being post-transform it is 16px on screen at any scale.
+    $("lb-glass-img").style.transform = t;
     $("lb-stage").classList.toggle("is-zoomable", lb.scale > 1);
   }
 
