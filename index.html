@@ -194,6 +194,12 @@
     box-shadow: 0 0 0 3px rgba(91, 140, 255, 0.18);
   }
 
+  /* Error styling for invalid numeric input (validated on blur) */
+  input[type="number"].invalid {
+    border-color: #ff5b5b;
+    box-shadow: 0 0 0 3px rgba(255, 91, 91, 0.18);
+  }
+
   input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   input[type="number"]::-webkit-outer-spin-button,
   input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
@@ -1345,6 +1351,23 @@
     // never keeps filtering on the previous value.
     bindThreshold("mag-th", "magMax", quickState.mag, function (v) { return v >= -2 && v <= 20; });
     bindThreshold("size-th", "sizeMin", quickState.size, function (v) { return v >= 1 && v <= 1200; });
+
+    // Validate numeric inputs on blur: non-numeric input gets error styling.
+    // Empty is allowed (means no filter); clear the error as soon as the user
+    // edits the value again.
+    Array.prototype.forEach.call(
+      document.querySelectorAll('input[type="number"]'),
+      function (input) {
+        input.addEventListener("blur", function () {
+          var bad = this.validity.badInput ||
+                    (this.value.trim() !== "" && num(this) === null);
+          this.classList.toggle("invalid", bad);
+        });
+        input.addEventListener("input", function () {
+          if (this.classList.contains("invalid")) this.classList.remove("invalid");
+        });
+      }
+    );
   }
 
   function bindThreshold(id, key, quick, valid) {
