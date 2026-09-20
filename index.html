@@ -232,7 +232,6 @@
   /* Icon-only, so it reads as an action rather than another filter. */
   .chip.reset {
     position: relative;
-    margin-left: auto;
     align-self: center;
     display: grid;
     place-items: center;
@@ -312,8 +311,8 @@
     text-align: center;
   }
 
-  .field.inline { flex-direction: row; align-items: center; gap: 9px; margin-left: auto; }
-  .field.inline select { min-width: 140px; }
+  .field.inline { flex-direction: row; align-items: center; gap: 9px; }
+  .field.inline #sort { width: 100px; min-width: 0; }
 
   /* ---------- Filter bar ---------- */
   .filterbar {
@@ -398,6 +397,12 @@
   }
 
   .ms-actions button:hover { color: var(--text); border-color: var(--line-strong); }
+
+  .ms-actions button:disabled {
+    opacity: .38;
+    cursor: not-allowed;
+  }
+  .ms-actions button:disabled:hover { color: var(--muted); border-color: var(--line); }
   .ms-list { max-height: 244px; overflow-y: auto; padding-top: 6px; }
 
   .ms-list label {
@@ -751,9 +756,7 @@
   /* ---------- Mobile: table becomes cards ---------- */
   @media (max-width: 1000px) {
     .field.wide { grid-column: span 1; }
-    .chip.reset { margin-left: 0; }
-    .field.inline { margin-left: 0; width: 100%; }
-    .field.inline select { flex: 1; }
+    .toolbar { flex-wrap: nowrap; }
 
     .tablewrap { border: 0; background: none; }
     table, tbody, tr, td { display: block; width: 100%; }
@@ -1006,9 +1009,16 @@
   var OBJECTS = DATA.objects;
   var IMAGES = window.CATALOGUE_IMAGES || {};
 
+  // 按天体的 `i` 属性建立查找表。OBJECTS 数组的索引只有在「数组索引 === i」
+  // 的前提下才等于 i 值；但目录条目一旦被删除（如「天使魚背部」对应的 i=5），
+  // 后续条目的 i 值并不会重新编号，于是数组索引与 i 之间就出现错位。lightbox
+  // 与浏览代码统一用 i 属性查询，避免这种删除后再去依赖「数组索引 === i」的假设。
+  var OBJECTS_BY_I = {};
+  OBJECTS.forEach(function (o) { OBJECTS_BY_I[o.i] = o; });
+
   // Bump this when any local photo file is replaced, so browsers bypass
   // their cached copy and fetch the new image instead of showing the old one.
-  var IMG_VER = "20260919";
+  var IMG_VER = "20260920";
   function imgUrl(u) {
     if (!u) return u;
     if (u.indexOf("assets/photos/") === 0 || u.indexOf("./assets/photos/") === 0) {
@@ -1181,6 +1191,8 @@
     var text = host.querySelector(".ms-text");
     var pop = host.querySelector(".ms-pop");
     var boxes = Array.prototype.slice.call(host.querySelectorAll(".ms-list input"));
+    var allBtn = host.querySelector('[data-act="all"]');
+    var noneBtn = host.querySelector('[data-act="none"]');
 
     function syncLabel() {
       if (!selected.size) {
@@ -1197,6 +1209,13 @@
 
     function syncBoxes() {
       boxes.forEach(function (b) { b.checked = selected.has(coerce(b.value)); });
+      syncActions();
+    }
+
+    // Disable 全選 when everything is picked; disable 清除 when nothing is picked.
+    function syncActions() {
+      allBtn.disabled = selected.size >= options.length;
+      noneBtn.disabled = selected.size === 0;
     }
 
     function setOpen(next) {
@@ -1223,15 +1242,18 @@
       var v = coerce(e.target.value);
       if (e.target.checked) selected.add(v); else selected.delete(v);
       syncLabel();
+      syncActions();
       onChange();
     });
 
-    host.querySelector('[data-act="all"]').addEventListener("click", function () {
+    allBtn.addEventListener("click", function () {
+      if (allBtn.disabled) return;
       options.forEach(function (o) { selected.add(o.value); });
       syncBoxes(); syncLabel(); onChange();
     });
 
-    host.querySelector('[data-act="none"]').addEventListener("click", function () {
+    noneBtn.addEventListener("click", function () {
+      if (noneBtn.disabled) return;
       selected.clear();
       syncBoxes(); syncLabel(); onChange();
     });
@@ -1744,9 +1766,11 @@
   function lbImageIndices() {
     if (filteredPhotoIndices.length > 0) return filteredPhotoIndices.slice();
     var out = [];
-    for (var i = 0; i < OBJECTS.length; i++) {
-      var img = IMAGES[i] || IMAGES[String(i)];
-      if (img && img.full) out.push(i);
+    for (var k = 0; k < OBJECTS.length; k++) {
+      // 用 o.i 而不是数组下标 k — 删除目录条目后两者不再对齐。
+      var o = OBJECTS[k];
+      var img = IMAGES[o.i] || IMAGES[String(o.i)];
+      if (img && img.full) out.push(o.i);
     }
     return out;
   }
@@ -1782,7 +1806,7 @@
     if (!img || !img.full) return;
     lb.index = i;
     lb.currentSrc = imgUrl(img.full);
-    var obj = OBJECTS[i];
+    var obj = OBJECTS_BY_I[i];
     var caption = obj ? objectCaption(obj) : (img.title || "");
     var lbImg = $("lb-img");
     var glassImg = $("lb-glass-img");
