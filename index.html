@@ -1001,7 +1001,6 @@
 </div>
 
 <script src="assets/catalogue.js?v=local-images"></script>
-<script src="assets/images.js?v=local-images"></script>
 <script>
 (function () {
   "use strict";
@@ -1011,7 +1010,6 @@
   // Hero 文案中的条目总数动态填充，增删目录条目后无需手动同步。
   var countEl = document.getElementById("obj-count");
   if (countEl) countEl.textContent = OBJECTS.length;
-  var IMAGES = window.CATALOGUE_IMAGES || {};
 
   // 按天体的 `i` 属性建立查找表。OBJECTS 数组的索引只有在「数组索引 === i」
   // 的前提下才等于 i 值；但目录条目一旦被删除（如「天使魚背部」对应的 i=5），
@@ -1022,7 +1020,7 @@
 
   // Bump this when any local photo file is replaced, so browsers bypass
   // their cached copy and fetch the new image instead of showing the old one.
-  var IMG_VER = "20260920";
+  var IMG_VER = "20260922";
   function imgUrl(u) {
     if (!u) return u;
     if (u.indexOf("assets/photos/") === 0 || u.indexOf("./assets/photos/") === 0) {
@@ -1607,7 +1605,7 @@
   }
 
   function photoCell(o) {
-    var img = IMAGES[o.i] || IMAGES[String(o.i)];
+    var img = o.img;
     if (!img || !img.thumb) {
       return '<span class="thumb-empty" title="暫無圖片"></span>';
     }
@@ -1630,10 +1628,9 @@
 
   function render() {
     var rows = OBJECTS.filter(matches).sort(compare);
-    filteredPhotoIndices = rows.map(function (o) { return o.i; }).filter(function (i) {
-      var img = IMAGES[i] || IMAGES[String(i)];
-      return img && img.full;
-    });
+    filteredPhotoIndices = rows.filter(function (o) {
+      return o.img && o.img.full;
+    }).map(function (o) { return o.i; });
     var w = decWindow();
 
     $("tbody").innerHTML = rows.map(function (o) {
@@ -1773,7 +1770,7 @@
     for (var k = 0; k < OBJECTS.length; k++) {
       // 用 o.i 而不是数组下标 k — 删除目录条目后两者不再对齐。
       var o = OBJECTS[k];
-      var img = IMAGES[o.i] || IMAGES[String(o.i)];
+      var img = o.img;
       if (img && img.full) out.push(o.i);
     }
     return out;
@@ -1806,11 +1803,11 @@
   }
 
   function lbOpen(i) {
-    var img = IMAGES[i] || IMAGES[String(i)];
+    var obj = OBJECTS_BY_I[i];
+    var img = obj && obj.img;
     if (!img || !img.full) return;
     lb.index = i;
     lb.currentSrc = imgUrl(img.full);
-    var obj = OBJECTS_BY_I[i];
     var caption = obj ? objectCaption(obj) : (img.title || "");
     var lbImg = $("lb-img");
     var glassImg = $("lb-glass-img");
