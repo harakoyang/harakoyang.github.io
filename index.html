@@ -813,7 +813,7 @@
 <header class="hero">
   <div class="hero-inner">
     <h1 lang="ja">天体観測<span class="romaji">「Tentai Kansoku」</span>Catalogue</h1>
-    <p class="lede">由 Harako 整理的「天体観測」列表，列舉了各月份最適觀測深空天體（共142個），可按需篩選月份、星等、視徑、名稱、赤經、赤緯與星座。</p>
+    <p class="lede">由 Harako 整理的「天体観測」列表，列舉了各月份最適觀測深空天體（共<span id="obj-count">142</span>個），可按需篩選月份、星等、視徑、名稱、赤經、赤緯與星座。</p>
     <p class="lede">收錄範圍包括梅西耶星表（Messier's Catalog）、星雲和星團新總表（the New General Catalogue of Nebulae and Clusters of Stars, NGC）、巴納德暗星雲表（Barnard's Catalog of Dark Nebulae）在內的多個著名深空天體列表。</p>
   </div>
 </header>
@@ -1007,6 +1007,9 @@
 
   var DATA = window.CATALOGUE;
   var OBJECTS = DATA.objects;
+  // Hero 文案中的条目总数动态填充，增删目录条目后无需手动同步。
+  var countEl = document.getElementById("obj-count");
+  if (countEl) countEl.textContent = OBJECTS.length;
   var IMAGES = window.CATALOGUE_IMAGES || {};
 
   // 按天体的 `i` 属性建立查找表。OBJECTS 数组的索引只有在「数组索引 === i」
