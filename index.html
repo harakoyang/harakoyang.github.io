@@ -271,6 +271,49 @@
   .chip.reset:not(:disabled):hover::after,
   .chip.reset:focus-visible::after { opacity: 1; }
 
+  /* ---------- Toolbar: advanced-filter disclosure + sort ---------- */
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 18px; }
+
+  .adv-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 15px;
+    font: inherit;
+    font-size: 13px;
+    color: var(--muted);
+    background: rgba(9, 16, 40, 0.7);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+
+  @media (hover: hover) {
+    .adv-toggle:hover { color: var(--text); border-color: var(--line-strong); }
+  }
+  .adv-toggle[aria-expanded="true"] { color: var(--text); border-color: var(--line-strong); }
+  .adv-toggle svg { width: 15px; height: 15px; }
+  .adv-toggle .caret { font-size: 10px; transition: transform .15s; }
+  .adv-toggle[aria-expanded="true"] .caret { transform: rotate(180deg); }
+
+  /* Active filters stay invisible while the panel is folded, so the count keeps
+     them discoverable. */
+  .adv-count {
+    min-width: 19px;
+    padding: 0 6px;
+    background: var(--ok);
+    border-radius: 999px;
+    color: #06102a;
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+  }
+
+  .field.inline { flex-direction: row; align-items: center; gap: 9px; margin-left: auto; }
+  .field.inline select { min-width: 140px; }
+
   /* ---------- Filter bar ---------- */
   .filterbar {
     display: grid;
@@ -282,6 +325,9 @@
     border: 1px solid var(--line);
     border-radius: 14px;
   }
+
+  /* The class selector would otherwise beat the UA sheet's [hidden] rule. */
+  .filterbar[hidden] { display: none; }
 
   .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
   .field > label, .field > .field-name {
@@ -704,6 +750,8 @@
   @media (max-width: 1000px) {
     .field.wide { grid-column: span 1; }
     .chip.reset { margin-left: 0; }
+    .field.inline { margin-left: 0; width: 100%; }
+    .field.inline select { flex: 1; }
 
     .tablewrap { border: 0; background: none; }
     table, tbody, tr, td { display: block; width: 100%; }
@@ -814,7 +862,22 @@
       </button>
     </div>
 
-    <div class="filterbar" id="filterbar">
+    <div class="toolbar">
+      <button type="button" class="adv-toggle" id="adv-toggle" aria-expanded="false" aria-controls="filterbar">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M4 7h10M18 7h2M4 17h4M12 17h8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path>
+          <circle cx="16" cy="7" r="2.2" stroke="currentColor" stroke-width="1.7"></circle>
+          <circle cx="10" cy="17" r="2.2" stroke="currentColor" stroke-width="1.7"></circle>
+        </svg>
+        高級篩選<span class="adv-count" id="adv-count" hidden="">0</span><span class="caret">▼</span>
+      </button>
+      <div class="field inline">
+        <label for="sort">排序</label>
+        <select id="sort"><option value="month|1">月份 ↑</option><option value="month|-1">月份 ↓</option><option value="name|1">名稱 ↑</option><option value="name|-1">名稱 ↓</option><option value="mag|1">星等 ↑</option><option value="mag|-1">星等 ↓</option><option value="size|1">視徑 ↑</option><option value="size|-1">視徑 ↓</option><option value="ra|1">RA ↑</option><option value="ra|-1">RA ↓</option><option value="dec|1">DEC ↑</option><option value="dec|-1">DEC ↓</option><option value="con|1">星座 ↑</option><option value="con|-1">星座 ↓</option></select>
+      </div>
+    </div>
+
+    <div class="filterbar" id="filterbar" hidden="">
       <div class="field">
         <span class="field-name" id="f-month">月份</span>
         <div class="ms" data-ms="month" aria-labelledby="f-month"><button type="button" class="ms-btn" aria-expanded="false" aria-haspopup="true"><span class="ms-text" style="">已選 3 項</span><span class="caret">▼</span></button><div class="ms-pop" hidden=""><div class="ms-actions"><button type="button" data-act="all">全選</button><button type="button" data-act="none">清除</button></div><div class="ms-list"><label><input type="checkbox" value="1"><span>一月</span><span class="count">28</span></label><label><input type="checkbox" value="2"><span>二月</span><span class="count">6</span></label><label><input type="checkbox" value="3"><span>三月</span><span class="count">3</span></label><label><input type="checkbox" value="4"><span>四月</span><span class="count">13</span></label><label><input type="checkbox" value="5"><span>五月</span><span class="count">4</span></label><label><input type="checkbox" value="6"><span>六月</span><span class="count">9</span></label><label><input type="checkbox" value="7"><span>七月</span><span class="count">13</span></label><label><input type="checkbox" value="8"><span>八月</span><span class="count">19</span></label><label><input type="checkbox" value="9"><span>九月</span><span class="count">16</span></label><label><input type="checkbox" value="10"><span>十月</span><span class="count">12</span></label><label><input type="checkbox" value="11"><span>十一月</span><span class="count">6</span></label><label><input type="checkbox" value="12"><span>十二月</span><span class="count">13</span></label></div></div></div>
@@ -862,10 +925,6 @@
       <div class="field">
         <span class="field-name" id="f-con">星座</span>
         <div class="ms" data-ms="con" aria-labelledby="f-con"><button type="button" class="ms-btn" aria-expanded="false" aria-haspopup="true"><span class="ms-text" style="color: var(--muted);">全部星座</span><span class="caret">▼</span></button><div class="ms-pop" hidden=""><div class="ms-actions"><button type="button" data-act="all">全選</button><button type="button" data-act="none">清除</button></div><div class="ms-list"><label><input type="checkbox" value="And"><span>And 仙女座</span><span class="count">1</span></label><label><input type="checkbox" value="Aqr"><span>Aqr 水瓶座</span><span class="count">1</span></label><label><input type="checkbox" value="Ara"><span>Ara 天壇座</span><span class="count">2</span></label><label><input type="checkbox" value="Aur"><span>Aur 御夫座</span><span class="count">5</span></label><label><input type="checkbox" value="Cam"><span>Cam 鹿豹座</span><span class="count">3</span></label><label><input type="checkbox" value="Car"><span>Car 船底座</span><span class="count">1</span></label><label><input type="checkbox" value="Cas"><span>Cas 仙后座</span><span class="count">9</span></label><label><input type="checkbox" value="Cen"><span>Cen 半人馬座</span><span class="count">3</span></label><label><input type="checkbox" value="Cep"><span>Cep 仙王座</span><span class="count">12</span></label><label><input type="checkbox" value="Com"><span>Com 后髮座</span><span class="count">4</span></label><label><input type="checkbox" value="CrA"><span>CrA 南冕座</span><span class="count">1</span></label><label><input type="checkbox" value="Cru"><span>Cru 南十字座</span><span class="count">1</span></label><label><input type="checkbox" value="Crv"><span>Crv 烏鴉座</span><span class="count">1</span></label><label><input type="checkbox" value="CVn"><span>CVn 獵犬座</span><span class="count">4</span></label><label><input type="checkbox" value="Cyg"><span>Cyg 天鵝座</span><span class="count">14</span></label><label><input type="checkbox" value="Dor"><span>Dor 劍魚座</span><span class="count">2</span></label><label><input type="checkbox" value="Dra"><span>Dra 天龍座</span><span class="count">1</span></label><label><input type="checkbox" value="Eri"><span>Eri 波江座</span><span class="count">1</span></label><label><input type="checkbox" value="Gem"><span>Gem 雙子座</span><span class="count">3</span></label><label><input type="checkbox" value="Her"><span>Her 武仙座</span><span class="count">1</span></label><label><input type="checkbox" value="Hya"><span>Hya 長蛇座</span><span class="count">1</span></label><label><input type="checkbox" value="Lac"><span>Lac 蝎虎座</span><span class="count">1</span></label><label><input type="checkbox" value="Leo"><span>Leo 獅子座</span><span class="count">2</span></label><label><input type="checkbox" value="Lib"><span>Lib 天秤座</span><span class="count">1</span></label><label><input type="checkbox" value="Lyr"><span>Lyr 天琴座</span><span class="count">1</span></label><label><input type="checkbox" value="Mon"><span>Mon 麒麟座</span><span class="count">6</span></label><label><input type="checkbox" value="Oph"><span>Oph 蛇夫座</span><span class="count">1</span></label><label><input type="checkbox" value="Ori"><span>Ori 獵戶座</span><span class="count">14</span></label><label><input type="checkbox" value="Peg"><span>Peg 飛馬座</span><span class="count">2</span></label><label><input type="checkbox" value="Per"><span>Per 英仙座</span><span class="count">7</span></label><label><input type="checkbox" value="Pup"><span>Pup 船尾座</span><span class="count">1</span></label><label><input type="checkbox" value="Scl"><span>Scl 玉夫座</span><span class="count">2</span></label><label><input type="checkbox" value="Sco"><span>Sco 天蠍座</span><span class="count">6</span></label><label><input type="checkbox" value="Sct"><span>Sct 盾牌座</span><span class="count">1</span></label><label><input type="checkbox" value="Ser"><span>Ser 巨蛇座</span><span class="count">1</span></label><label><input type="checkbox" value="Sge"><span>Sge 天箭座</span><span class="count">1</span></label><label><input type="checkbox" value="Sgr"><span>Sgr 人馬座</span><span class="count">8</span></label><label><input type="checkbox" value="Tau"><span>Tau 金牛座</span><span class="count">7</span></label><label><input type="checkbox" value="Tri"><span>Tri 三角座</span><span class="count">1</span></label><label><input type="checkbox" value="Tuc"><span>Tuc 杜鵑座</span><span class="count">2</span></label><label><input type="checkbox" value="UMa"><span>UMa 大熊座</span><span class="count">2</span></label><label><input type="checkbox" value="Vel"><span>Vel 船帆座</span><span class="count">2</span></label><label><input type="checkbox" value="Vul"><span>Vul 狐狸座</span><span class="count">2</span></label></div></div></div>
-      </div>
-      <div class="field">
-        <label for="sort">排序</label>
-        <select id="sort"><option value="month|1">月份 ↑</option><option value="month|-1">月份 ↓</option><option value="name|1">名稱 ↑</option><option value="name|-1">名稱 ↓</option><option value="mag|1">星等 ↑</option><option value="mag|-1">星等 ↓</option><option value="size|1">視徑 ↑</option><option value="size|-1">視徑 ↓</option><option value="ra|1">RA ↑</option><option value="ra|-1">RA ↓</option><option value="dec|1">DEC ↑</option><option value="dec|-1">DEC ↓</option><option value="con|1">星座 ↑</option><option value="con|-1">星座 ↓</option></select>
       </div>
     </div>
 
@@ -1338,19 +1397,38 @@
     });
   }
 
+  function activeFilterCount() {
+    var n = 0;
+    if (state.q !== "") n++;
+    [state.months, state.cats, state.cons].forEach(function (s) { if (s.size) n++; });
+    [state.mag, state.size, state.ra, state.dec].forEach(function (r) {
+      if (r.min !== null || r.max !== null) n++;
+    });
+    return n;
+  }
+
   function hasActiveFilters() {
-    return state.q !== "" ||
-      state.months.size > 0 ||
-      state.cats.size > 0 ||
-      state.cons.size > 0 ||
-      state.hideUnsuitableDec ||
-      [state.mag, state.size, state.ra, state.dec].some(function (r) {
-        return r.min !== null || r.max !== null;
-      });
+    return state.hideUnsuitableDec || activeFilterCount() > 0;
   }
 
   function syncResetUi() {
     $("reset").disabled = !hasActiveFilters();
+  }
+
+  /* ---------- Advanced filter panel ---------- */
+
+  function bindAdvanced() {
+    $("adv-toggle").addEventListener("click", function () {
+      var open = this.getAttribute("aria-expanded") !== "true";
+      this.setAttribute("aria-expanded", String(open));
+      $("filterbar").hidden = !open;
+    });
+  }
+
+  function syncAdvancedUi() {
+    var n = activeFilterCount();
+    $("adv-count").textContent = n;
+    $("adv-count").hidden = n === 0;
   }
 
   function syncQuickUi() {
@@ -1524,6 +1602,7 @@
     syncSortUi();
     syncQuickUi();
     syncResetUi();
+    syncAdvancedUi();
   }
 
   /* ---------- Lightbox ---------- */
@@ -1971,6 +2050,7 @@
   buildHead();
   buildSelectors();
   bindQuick();
+  bindAdvanced();
   bindInputs();
   bindLightbox();
   buildGlossary();
