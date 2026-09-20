@@ -255,7 +255,8 @@
   .chip.reset::after {
     content: attr(data-tip);
     position: absolute;
-    right: 0;
+    left: 50%;
+    transform: translateX(-50%);
     bottom: calc(100% + 8px);
     padding: 5px 9px;
     background: var(--bg-soft);
