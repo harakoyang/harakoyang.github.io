@@ -195,7 +195,8 @@
   }
 
   /* Error styling for invalid numeric input (validated on blur) */
-  input[type="number"].invalid {
+  input[type="number"].invalid,
+  .range.reversed input[type="number"] {
     border-color: #ff5b5b;
     box-shadow: 0 0 0 3px rgba(255, 91, 91, 0.18);
   }
@@ -341,6 +342,7 @@
   .range { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 6px; }
   .range span { color: var(--muted); font-size: 13px; }
   .range input { width: 100%; }
+  .range-error { margin: 0; color: var(--bad); font-size: 11.5px; line-height: 1.4; }
 
 
   /* ---------- Multi-select ---------- */
@@ -889,6 +891,7 @@
           <span>–</span>
           <input type="number" id="mag-max" step="0.1" placeholder="最暗" aria-label="星等上限">
         </div>
+        <p class="range-error" id="mag-error" role="alert" hidden="">上限不可小於下限</p>
       </div>
       <div class="field">
         <label for="size-min">視徑 Size（角分 ′）</label>
@@ -897,6 +900,7 @@
           <span>–</span>
           <input type="number" id="size-max" step="1" placeholder="最大" aria-label="視徑上限">
         </div>
+        <p class="range-error" id="size-error" role="alert" hidden="">上限不可小於下限</p>
       </div>
       <div class="field wide">
         <label for="q">天體編號 / 中英文名稱</label>
@@ -913,6 +917,7 @@
           <span>–</span>
           <input type="number" id="ra-max" step="0.5" min="0" max="24" placeholder="24" aria-label="赤經上限">
         </div>
+        <p class="range-error" id="ra-error" role="alert" hidden="">上限不可小於下限</p>
       </div>
       <div class="field">
         <label for="dec-min">DEC 赤緯（度 °）</label>
@@ -921,6 +926,7 @@
           <span>–</span>
           <input type="number" id="dec-max" step="1" min="-90" max="90" placeholder="+90" aria-label="赤緯上限">
         </div>
+        <p class="range-error" id="dec-error" role="alert" hidden="">上限不可小於下限</p>
       </div>
       <div class="field">
         <span class="field-name" id="f-con">星座</span>
@@ -1070,6 +1076,15 @@
     var lo = Math.max(-90, state.lat - ALT_SPAN);
     var hi = Math.min(90, state.lat + ALT_SPAN);
     return { lo: lo, hi: hi };
+  }
+
+  function decWindowRange() {
+    var w = decWindow();
+    // Defensive clamp: keep the backfilled dec range inside [-90, 90].
+    return {
+      min: Math.max(-90, Math.min(90, w.lo)),
+      max: Math.max(-90, Math.min(90, w.hi))
+    };
   }
 
   function formatDeg(d) {
@@ -1338,13 +1353,18 @@
       set: function (v) { state.size.min = v ? state.sizeMin : null; }
     },
     dec: {
-      on: function () { return state.dec.min !== null || state.dec.max !== null; },
+      // Matching the window exactly — rather than "any dec range" — keeps a
+      // hand-typed range from counting as this chip's doing, so retuning the
+      // latitude overwrites the range only when the chip really set it.
+      on: function () {
+        var w = decWindowRange();
+        return state.dec.min === w.min && state.dec.max === w.max;
+      },
       set: function (v) {
         if (v) {
-          var w = decWindow();
-          // Defensive clamp: keep the backfilled dec range inside [-90, 90].
-          state.dec.min = Math.max(-90, Math.min(90, w.lo));
-          state.dec.max = Math.max(-90, Math.min(90, w.hi));
+          var w = decWindowRange();
+          state.dec.min = w.min;
+          state.dec.max = w.max;
         } else {
           state.dec.min = null;
           state.dec.max = null;
@@ -1454,19 +1474,47 @@
     ["dec", "dec-min", "dec-max"]
   ];
 
+  // Clamp to [min,max] and write the clamped value back to the field, so a
+  // field never shows a number the filter is not actually using.
+  function clampInput(input, v, bounds) {
+    if (!bounds || v === null) return v;
+    if (v < bounds.min) { v = bounds.min; input.value = v; }
+    else if (v > bounds.max) { v = bounds.max; input.value = v; }
+    return v;
+  }
+
+  // A reversed range matches nothing, which on its own just looks like an empty
+  // table, so both ends get flagged instead.
+  function reversed(r) {
+    var s = state[r[0]];
+    return s.min !== null && s.max !== null && s.max < s.min;
+  }
+
+  function setRangeError(r, bad) {
+    $(r[1]).parentNode.classList.toggle("reversed", bad);
+    [$(r[1]), $(r[2])].forEach(function (input) {
+      input.setAttribute("aria-invalid", String(bad));
+    });
+    $(r[0] + "-error").hidden = !bad;
+  }
+
+  function syncRangeErrors() {
+    RANGES.forEach(function (r) { setRangeError(r, reversed(r)); });
+  }
+
   function bindInputs() {
     RANGES.forEach(function (r) {
       var bounds = RANGE_BOUNDS[r[0]];
       [["min", r[1]], ["max", r[2]]].forEach(function (pair) {
         $(pair[1]).addEventListener("input", function () {
-          var v = num(this);
-          // Clamp to [min,max] and write the clamped value back to the field
-          if (bounds && v !== null) {
-            if (v < bounds.min) { v = bounds.min; this.value = v; }
-            else if (v > bounds.max) { v = bounds.max; this.value = v; }
-          }
-          state[r[0]][pair[0]] = v;
+          state[r[0]][pair[0]] = clampInput(this, num(this), bounds);
+          // Checking mid-typing would flag every intermediate value, so the
+          // verdict waits for blur and the stale one clears now.
+          setRangeError(r, false);
           render();
+        });
+        $(pair[1]).addEventListener("blur", function () {
+          setRangeError(r, reversed(r));
         });
       });
     });
@@ -1476,17 +1524,12 @@
       render();
     });
 
-    $("lat").addEventListener("input", function () {
-      var v = num(this);
-      if (v === null || v < -90 || v > 90) return;
-      state.lat = v;
-      render();
-    });
-
     // Retuning a threshold carries its quick filter along, so a pressed chip
-    // never keeps filtering on the previous value.
-    bindThreshold("mag-th", "magMax", quickState.mag, function (v) { return v >= -2 && v <= 20; });
-    bindThreshold("size-th", "sizeMin", quickState.size, function (v) { return v >= 1 && v <= 1200; });
+    // never keeps filtering on the previous value. For latitude that means the
+    // DEC range follows the recomputed 適宜赤緯 window.
+    bindThreshold("mag-th", "magMax", quickState.mag, { min: -2, max: 20 });
+    bindThreshold("size-th", "sizeMin", quickState.size, { min: 1, max: 1200 });
+    bindThreshold("lat", "lat", quickState.dec, { min: -90, max: 90 });
 
     // Validate numeric inputs on blur: non-numeric input gets error styling.
     // Empty is allowed (means no filter); clear the error as soon as the user
@@ -1506,10 +1549,10 @@
     );
   }
 
-  function bindThreshold(id, key, quick, valid) {
+  function bindThreshold(id, key, quick, bounds) {
     $(id).addEventListener("input", function () {
-      var v = num(this);
-      if (v === null || !valid(v)) return;
+      var v = clampInput(this, num(this), bounds);
+      if (v === null) return;
       var wasOn = quick.on();
       state[key] = v;
       if (wasOn) quick.set(true);
@@ -1525,6 +1568,7 @@
       $(r[2]).value = s.max === null ? "" : s.max;
     });
     $("q").value = state.q;
+    syncRangeErrors();
   }
 
   /* ---------- Render ---------- */
