@@ -174,6 +174,42 @@
   .crit-field { display: inline-flex; align-items: center; gap: 5px; }
   .crit-value { color: var(--text); font-variant-numeric: tabular-nums; }
 
+  .icon-btn {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    color: var(--muted);
+    background: rgba(9, 16, 40, 0.85);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+
+  .icon-btn svg { width: 15px; height: 15px; }
+  @media (hover: hover) {
+    .icon-btn:not(:disabled):hover { color: var(--text); border-color: var(--line-strong); background: rgba(140, 170, 230, 0.16); }
+  }
+  .icon-btn:disabled { cursor: default; }
+
+  /* Locating can take seconds, so the button spins rather than just greying out. */
+  .icon-btn.is-busy svg { visibility: hidden; }
+  .icon-btn.is-busy::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 14px;
+    height: 14px;
+    margin: -7px 0 0 -7px;
+    border: 2px solid rgba(140, 170, 230, 0.25);
+    border-top-color: var(--text);
+    border-radius: 50%;
+    animation: lb-spin 0.8s linear infinite;
+  }
+
   /* ---------- Form controls ---------- */
   input[type="text"], input[type="search"], input[type="number"], select {
     padding: 8px 12px;
@@ -231,7 +267,6 @@
   .chip[data-tone="bad"][aria-pressed="true"] { background: var(--bad); border-color: var(--bad); }
   /* Icon-only, so it reads as an action rather than another filter. */
   .chip.reset {
-    position: relative;
     align-self: center;
     display: grid;
     place-items: center;
@@ -252,7 +287,9 @@
     background: none;
   }
 
-  .chip.reset::after {
+  /* Hover bubble for the icon-only buttons, which carry no visible label. */
+  .tip { position: relative; }
+  .tip::after {
     content: attr(data-tip);
     position: absolute;
     left: 50%;
@@ -269,8 +306,10 @@
     pointer-events: none;
     transition: opacity .15s;
   }
-  .chip.reset:not(:disabled):hover::after,
-  .chip.reset:focus-visible::after { opacity: 1; }
+  .tip:not(:disabled):hover::after,
+  .tip:focus-visible::after { opacity: 1; }
+  /* Confirmation the button shows on its own, without waiting for a hover. */
+  .tip.is-done::after { opacity: 1; color: var(--ok); border-color: var(--ok); }
 
   /* ---------- Toolbar: advanced-filter disclosure + sort ---------- */
   .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 18px; }
@@ -847,6 +886,12 @@
           <span class="crit-field">
             <input type="number" id="lat" value="23.5" step="0.5" min="-90" max="90" aria-describedby="lat-window">
             <span>°</span>
+            <button type="button" class="icon-btn tip" id="geo" data-tip="獲取當前緯度" aria-label="獲取當前緯度">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 21.2c4.2-4 6.3-7.3 6.3-10a6.3 6.3 0 1 0-12.6 0c0 2.7 2.1 6 6.3 10Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
+                <circle cx="12" cy="11" r="2.4" stroke="currentColor" stroke-width="1.7"></circle>
+              </svg>
+            </button>
           </span>
           <span>適宜赤緯 <span class="crit-value" id="lat-window">−21°30′ 至 +68°30′</span></span>
         </div>
@@ -858,7 +903,7 @@
       <button class="chip" data-quick="mag" data-tone="ok" aria-pressed="false">星等 ≤ 9.5</button>
       <button class="chip" data-quick="size" data-tone="ok" aria-pressed="false">視徑 ≥ 0°30′</button>
       <button class="chip" data-quick="dec" data-tone="bad" aria-pressed="false">排除緯度外天區</button>
-      <button class="chip reset" id="reset" data-tip="重置全部篩選" aria-label="重置全部篩選">
+      <button class="chip reset tip" id="reset" data-tip="重置全部篩選" aria-label="重置全部篩選">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path>
           <path d="M19.2 3.8v3.4h-3.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path>
@@ -1090,11 +1135,13 @@
 
   function decWindowRange() {
     var w = decWindow();
-    // Defensive clamp: keep the backfilled dec range inside [-90, 90].
-    return {
-      min: Math.max(-90, Math.min(90, w.lo)),
-      max: Math.max(-90, Math.min(90, w.hi))
-    };
+    // Defensive clamp keeps the backfilled dec range inside [-90, 90]; rounding
+    // keeps it readable, since these land in the DEC fields as-is and a GPS
+    // latitude of 25.04 would otherwise write 70.03999999999999.
+    function bound(v) {
+      return Math.round(Math.max(-90, Math.min(90, v)) * 100) / 100;
+    }
+    return { min: bound(w.lo), max: bound(w.hi) };
   }
 
   function formatDeg(d) {
@@ -1569,6 +1616,79 @@
         });
       }
     );
+  }
+
+  /* ---------- Geolocation ---------- */
+
+  var GEO_TIMEOUT = 5000;
+
+  var GEO_ERRORS = {
+    1: "已拒絕定位權限，請在瀏覽器設定中允許本站取得位置，或直接手動輸入緯度。",
+    2: "目前取不到定位訊號，請確認裝置的定位服務已開啟，或直接手動輸入緯度。",
+    3: "定位逾時（" + (GEO_TIMEOUT / 1000) + " 秒內沒有回應），請稍後再試一次，或直接手動輸入緯度。"
+  };
+
+  var GEO_TIP = "獲取當前緯度";
+  var geoTipTimer = null;
+
+  function geoBusy(busy) {
+    $("geo").disabled = busy;
+    $("geo").classList.toggle("is-busy", busy);
+  }
+
+  function clearGeoTip() {
+    clearTimeout(geoTipTimer);
+    $("geo").classList.remove("is-done");
+    $("geo").dataset.tip = GEO_TIP;
+  }
+
+  // The button carries no label, so its hover bubble doubles as the success
+  // notice for a moment rather than interrupting with a dialog.
+  function flashGeoTip(text) {
+    clearGeoTip();
+    $("geo").dataset.tip = text;
+    $("geo").classList.add("is-done");
+    geoTipTimer = setTimeout(clearGeoTip, 2400);
+  }
+
+  // silent covers the attempt made on load: nobody asked for it, so a failure
+  // leaves the default latitude in place instead of raising a dialog.
+  function requestLocation(silent) {
+    // Browsers only expose this over HTTPS/localhost, so it can be missing.
+    if (!navigator.geolocation) {
+      if (!silent) window.alert("此瀏覽器不支援定位功能，請手動輸入緯度。");
+      return;
+    }
+
+    clearGeoTip();
+    geoBusy(true);
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      geoBusy(false);
+      var lat = $("lat");
+      // Two decimals is ~1 km of latitude, well past what the ±45° window needs.
+      lat.value = Math.round(pos.coords.latitude * 100) / 100;
+      // Go through the field's own handler so clamping and the DEC window
+      // linkage behave exactly as they do for a typed value.
+      lat.dispatchEvent(new Event("input"));
+      if (!silent) flashGeoTip("已獲取當前緯度");
+    }, function (err) {
+      geoBusy(false);
+      if (!silent) window.alert(GEO_ERRORS[err.code] || "定位失敗，請手動輸入緯度。");
+    }, { enableHighAccuracy: false, timeout: GEO_TIMEOUT, maximumAge: 300000 });
+  }
+
+  // Only locate unprompted when the site already holds permission, so a first
+  // visit never opens the browser's permission dialog on its own.
+  function autoLocate() {
+    if (!navigator.geolocation || !navigator.permissions || !navigator.permissions.query) return;
+    navigator.permissions.query({ name: "geolocation" }).then(function (status) {
+      if (status.state === "granted") requestLocation(true);
+    }, function () {});
+  }
+
+  function bindGeolocate() {
+    $("geo").addEventListener("click", function () { requestLocation(false); });
+    autoLocate();
   }
 
   function bindThreshold(id, key, quick, bounds) {
@@ -2119,6 +2239,7 @@
   bindQuick();
   bindAdvanced();
   bindInputs();
+  bindGeolocate();
   bindLightbox();
   buildGlossary();
   render();
