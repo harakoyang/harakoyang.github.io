@@ -188,22 +188,22 @@
     transition: color .15s, border-color .15s, background .15s;
   }
 
-  .icon-btn svg { width: 15px; height: 15px; }
+  .icon-btn svg { width: 15px; height: 15px; grid-area: 1 / 1; }
   @media (hover: hover) {
     .icon-btn:not(:disabled):hover { color: var(--text); border-color: var(--line-strong); background: rgba(140, 170, 230, 0.16); }
   }
   .icon-btn:disabled { cursor: default; }
 
-  /* Locating can take seconds, so the button spins rather than just greying out. */
+  /* Locating can take seconds, so the button spins rather than just greying out.
+     The ring shares the icon's grid cell, which lets the button's own centring
+     place it instead of hand-computed offsets. */
   .icon-btn.is-busy svg { visibility: hidden; }
   .icon-btn.is-busy::before {
     content: "";
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 14px;
-    height: 14px;
-    margin: -7px 0 0 -7px;
+    grid-area: 1 / 1;
+    box-sizing: border-box;
+    width: 16px;
+    height: 16px;
     border: 2px solid rgba(140, 170, 230, 0.25);
     border-top-color: var(--text);
     border-radius: 50%;
@@ -306,7 +306,14 @@
     pointer-events: none;
     transition: opacity .15s;
   }
-  .tip:not(:disabled):hover::after,
+  /* Same reason as the chips: a tap on a touch screen leaves :hover stuck on,
+     which would park the bubble on screen with no way to dismiss it. */
+  @media (hover: hover) {
+    .tip:not(:disabled):hover::after { opacity: 1; }
+    /* A click leaves the pointer parked on the button, so hold the prompt down
+       until it moves away rather than letting it pop back over the result. */
+    .tip.is-quiet:not(:disabled):hover::after { opacity: 0; }
+  }
   .tip:focus-visible::after { opacity: 1; }
   /* Confirmation the button shows on its own, without waiting for a hover. */
   .tip.is-done::after { opacity: 1; color: var(--ok); border-color: var(--ok); }
@@ -1638,16 +1645,21 @@
 
   function clearGeoTip() {
     clearTimeout(geoTipTimer);
-    $("geo").classList.remove("is-done");
-    $("geo").dataset.tip = GEO_TIP;
+    var btn = $("geo");
+    btn.classList.remove("is-done");
+    btn.dataset.tip = GEO_TIP;
+    // Only a pointer that has since moved away should see the prompt again.
+    btn.classList.toggle("is-quiet", btn.matches(":hover"));
   }
 
   // The button carries no label, so its hover bubble doubles as the success
   // notice for a moment rather than interrupting with a dialog.
   function flashGeoTip(text) {
-    clearGeoTip();
-    $("geo").dataset.tip = text;
-    $("geo").classList.add("is-done");
+    clearTimeout(geoTipTimer);
+    var btn = $("geo");
+    btn.dataset.tip = text;
+    btn.classList.remove("is-quiet");
+    btn.classList.add("is-done");
     geoTipTimer = setTimeout(clearGeoTip, 2400);
   }
 
@@ -1687,7 +1699,11 @@
   }
 
   function bindGeolocate() {
-    $("geo").addEventListener("click", function () { requestLocation(false); });
+    var btn = $("geo");
+    btn.addEventListener("click", function () { requestLocation(false); });
+    ["mouseleave", "blur"].forEach(function (evt) {
+      btn.addEventListener(evt, function () { btn.classList.remove("is-quiet"); });
+    });
     autoLocate();
   }
 
