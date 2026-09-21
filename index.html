@@ -122,6 +122,59 @@
   h3 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
   .section-note { margin: 0 0 24px; color: var(--muted); font-size: 14px; }
 
+  /* ---------- Observation-time setting ---------- */
+  .cat-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+  .cat-head h2 { margin: 0; }
+  .obs-time { position: relative; }
+
+  .obs-time-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 13px;
+    font: inherit;
+    font-size: 13px;
+    color: var(--muted);
+    background: rgba(9, 16, 40, 0.7);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  .obs-time-btn svg { width: 15px; height: 15px; }
+  .obs-time-val { color: var(--text); font-variant-numeric: tabular-nums; }
+  @media (hover: hover) {
+    .obs-time-btn:hover { color: var(--text); border-color: var(--line-strong); }
+  }
+  .obs-time-btn[aria-expanded="true"] { color: var(--text); border-color: var(--line-strong); }
+
+  .obs-time-pop {
+    position: absolute;
+    z-index: 40;
+    top: calc(100% + 6px);
+    left: 0;
+    width: 232px;
+    padding: 12px;
+    background: var(--panel-solid);
+    border: 1px solid var(--line-strong);
+    border-radius: 11px;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+  }
+  .obs-time-pop label { display: block; margin-bottom: 7px; font-size: 13px; color: var(--muted); }
+  .obs-time-pop select {
+    width: 100%;
+    padding: 7px 10px;
+    font: inherit;
+    font-size: 14px;
+    color: var(--text);
+    background: rgba(9, 16, 40, 0.85);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+  }
+  .obs-time-pop select:focus-visible { outline: none; border-color: var(--line-strong); }
+  .obs-time-note { margin: 9px 0 0; font-size: 12px; line-height: 1.55; color: var(--muted); }
+
+
   /* ---------- Stats ---------- */
   .stats {
     display: grid;
@@ -310,13 +363,20 @@
      which would park the bubble on screen with no way to dismiss it. */
   @media (hover: hover) {
     .tip:not(:disabled):hover::after { opacity: 1; }
-    /* A click leaves the pointer parked on the button, so hold the prompt down
-       until it moves away rather than letting it pop back over the result. */
-    .tip.is-quiet:not(:disabled):hover::after { opacity: 0; }
   }
+  /* Once a locate is started the bubble stays suppressed until the pointer
+     leaves the button — the default hover text must never reappear mid-flow,
+     even while parked on the button. opacity:0 with no transition guarantees
+     an instant snap when the success notice (is-done, below) clears. */
+  .tip.is-quiet::after { opacity: 0 !important; transition: none; }
   .tip:focus-visible::after { opacity: 1; }
-  /* Confirmation the button shows on its own, without waiting for a hover. */
-  .tip.is-done::after { opacity: 1; color: var(--ok); border-color: var(--ok); }
+  /* Locating can take seconds; hide the prompt bubble while the spinner runs,
+     rather than letting it park on screen until the result lands. */
+  .tip.is-busy::after { opacity: 0 !important; }
+  /* Confirmation the button shows on its own, without waiting for a hover.
+     !important + placed after is-quiet so the success text wins over the
+     suppressed state while the operation is still in progress. */
+  .tip.is-done::after { opacity: 1 !important; color: var(--ok); border-color: var(--ok); }
 
   /* ---------- Toolbar: advanced-filter disclosure + sort ---------- */
   .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 18px; }
@@ -868,7 +928,37 @@
 <main>
 
   <section aria-labelledby="cat-h">
-    <h2 id="cat-h">各月份最適觀測深空天體列表</h2>
+    <div class="cat-head">
+      <h2 id="cat-h">各月份最適觀測深空天體列表</h2>
+      <div class="obs-time" id="obs-time">
+        <button type="button" class="obs-time-btn" id="obs-time-btn" aria-haspopup="true" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"></circle>
+            <path d="M12 7.5V12l3 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+          觀測時刻<span class="obs-time-val" id="obs-time-val">00:00</span>
+        </button>
+        <div class="obs-time-pop" id="obs-time-pop" role="dialog" aria-label="觀測時刻設定" hidden="">
+          <label for="obs-hour">觀測時刻</label>
+          <select id="obs-hour">
+            <option value="18">18:00</option>
+            <option value="19">19:00</option>
+            <option value="20">20:00</option>
+            <option value="21">21:00</option>
+            <option value="22">22:00</option>
+            <option value="23">23:00</option>
+            <option value="0" selected="">00:00</option>
+            <option value="1">01:00</option>
+            <option value="2">02:00</option>
+            <option value="3">03:00</option>
+            <option value="4">04:00</option>
+            <option value="5">05:00</option>
+            <option value="6">06:00</option>
+          </select>
+          <p class="obs-time-note">依天體的赤經推算在所選觀測時刻，該天體處於中天高度的月份。</p>
+        </div>
+      </div>
+    </div>
 
     <div class="legend">
       <div class="legend-card" style="--accent: var(--ok)">
@@ -1091,6 +1181,82 @@
   var MONTH_NAMES = ["一月", "二月", "三月", "四月", "五月", "六月",
                      "七月", "八月", "九月", "十月", "十一月", "十二月"];
 
+  /* ---------- Dynamic month from observation hour + RA ----------
+     Months are not stored on the objects: each object's month is the month in
+     which it culminates (crosses the meridian) at the chosen local observation
+     hour. At local time h on day d, LST ≈ sunRA(d) + 12 + h, so the object
+     transits when sunRA ≡ RA − 12 − h (mod 24). Solar position uses the
+     standard low-precision formula on a 365-day reference year; at month-level
+     granularity timezone/longitude offsets never flip the result. */
+  var MONTH_CUM_DAYS = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+
+  function wrap24(v) { v %= 24; if (v < 0) v += 24; return v; }
+
+  var SUN_RA = (function () {
+    var rad = Math.PI / 180;
+    var table = new Array(365);
+    for (var d = 0; d < 365; d++) {
+      var g = (357.529 + 0.98560028 * d) * rad;
+      var q = (280.459 + 0.98564736 * d) * rad;
+      var lambda = q + (1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * rad;
+      table[d] = wrap24(
+        Math.atan2(Math.cos(23.439 * rad) * Math.sin(lambda), Math.cos(lambda)) * 12 / Math.PI
+      );
+    }
+    return table;
+  })();
+
+  function monthFromDay(d) {
+    for (var m = 0; m < 12; m++) {
+      if (d >= MONTH_CUM_DAYS[m] && d < MONTH_CUM_DAYS[m + 1]) return m + 1;
+    }
+    return 12;
+  }
+
+  function computeMonth(ra, hour) {
+    var target = wrap24(ra - 12 - hour);
+    var bestD = 0, best = 99;
+    for (var d = 0; d < 365; d++) {
+      var diff = Math.abs(SUN_RA[d] - target);
+      if (diff > 12) diff = 24 - diff;
+      if (diff < best) { best = diff; bestD = d; }
+    }
+    return monthFromDay(bestD);
+  }
+
+  function assignMonths(hour) {
+    OBJECTS.forEach(function (o) { o.month = computeMonth(o.ra, hour); });
+    assignRaKeys();
+  }
+
+  /* RA is circular (0–24h), but a month can straddle the 0h seam — a single
+     month may hold both 23h and 00h objects. For within-month ordering the
+     seam must sit in the month's emptiest stretch: cut the RA circle at the
+     largest gap between that month's objects, then push the early-hours tail
+     (everything before the cut) to +24h. Used only as the month-tie sort key;
+     the displayed RA text is untouched. */
+  function assignRaKeys() {
+    var byMonth = {};
+    OBJECTS.forEach(function (o) {
+      (byMonth[o.month] = byMonth[o.month] || []).push(o.ra);
+    });
+    Object.keys(byMonth).forEach(function (m) {
+      var sorted = byMonth[m].slice().sort(function (a, b) { return a - b; });
+      var cut = sorted[0];
+      if (sorted.length > 1) {
+        var maxGap = 24 - sorted[sorted.length - 1] + sorted[0]; // wrap gap
+        for (var k = 0; k < sorted.length - 1; k++) {
+          var gap = sorted[k + 1] - sorted[k];
+          if (gap > maxGap) { maxGap = gap; cut = sorted[k + 1]; }
+        }
+      }
+      byMonth[m] = cut;
+    });
+    OBJECTS.forEach(function (o) {
+      o.raKey = o.ra >= byMonth[o.month] ? o.ra : o.ra + 24;
+    });
+  }
+
   var COLUMNS = [
     { key: "month", label: "月份" },
     { key: "photo", label: "圖片", sort: false },
@@ -1104,6 +1270,7 @@
 
   var state = {
     lat: 23.5,
+    obsHour: 0,
     magMax: DEFAULT_MAG_MAX,
     sizeMin: DEFAULT_SIZE_MIN,
     q: "",
@@ -1204,15 +1371,32 @@
     return o[key];
   }
 
+  // Equal primary keys fall back to sky order: RA always ascending (the
+  // catalogue index is only an insertion counter, not a meaningful order),
+  // then the index to keep the result deterministic. Within a month the
+  // seam-aware raKey keeps 00h objects after 23h ones; ties on other columns
+  // can span months, so they use the unwrapped RA instead. The RA fallback
+  // ignores sortDir so every month reads in natural order in both directions.
+  function byRaThenIndex(a, b) {
+    if (state.sortKey === "month") {
+      if (a.raKey < b.raKey) return -1;
+      if (a.raKey > b.raKey) return 1;
+    } else if (state.sortKey !== "ra") {
+      if (a.ra < b.ra) return -1;
+      if (a.ra > b.ra) return 1;
+    }
+    return a.i - b.i;
+  }
+
   function compare(a, b) {
     var va = sortValue(a, state.sortKey);
     var vb = sortValue(b, state.sortKey);
-    if (va === null && vb === null) return a.i - b.i;
+    if (va === null && vb === null) return byRaThenIndex(a, b);
     if (va === null) return 1;   // blanks always last
     if (vb === null) return -1;
     if (va < vb) return -1 * state.sortDir;
     if (va > vb) return 1 * state.sortDir;
-    return a.i - b.i;
+    return byRaThenIndex(a, b);
   }
 
   /* ---------- Multi-select ---------- */
@@ -1288,6 +1472,11 @@
           p.parentNode.querySelector(".ms-btn").setAttribute("aria-expanded", "false");
         }
       });
+      var obsPop = document.getElementById("obs-time-pop");
+      if (obsPop && !obsPop.hidden) {
+        obsPop.hidden = true;
+        document.getElementById("obs-time-btn").setAttribute("aria-expanded", "false");
+      }
       setOpen(!open);
     });
 
@@ -1319,7 +1508,23 @@
 
     syncBoxes();
     syncLabel();
-    return { sync: function () { syncBoxes(); syncLabel(); } };
+    // Swap the option set in place (used when the observation hour changes
+    // which months every object belongs to): rebuild only the list, keeping
+    // the widget, its popover state and its document-level listeners.
+    return {
+      sync: function () { syncBoxes(); syncLabel(); },
+      update: function (nextOptions) {
+        options = nextOptions;
+        host.querySelector(".ms-list").innerHTML = options.map(function (opt) {
+          return '<label><input type="checkbox" value="' + esc(opt.value) + '">' +
+                 '<span>' + esc(opt.label) + '</span>' +
+                 '<span class="count">' + opt.count + '</span></label>';
+        }).join("");
+        boxes = Array.prototype.slice.call(host.querySelectorAll(".ms-list input"));
+        syncBoxes();
+        syncLabel();
+      }
+    };
   }
 
   function countBy(fn) {
@@ -1335,13 +1540,17 @@
 
   var selectors = {};
 
-  function buildSelectors() {
+  function monthOptions() {
     var monthCounts = countBy(function (o) { return o.month; });
+    return MONTH_NAMES.map(function (name, i) {
+      return { value: i + 1, label: name, count: monthCounts.get(i + 1) || 0 };
+    });
+  }
+
+  function buildSelectors() {
     selectors.month = MultiSelect(
       document.querySelector('[data-ms="month"]'),
-      MONTH_NAMES.map(function (name, i) {
-        return { value: i + 1, label: name, count: monthCounts.get(i + 1) || 0 };
-      }),
+      monthOptions(),
       state.months, "全部月份", render);
 
     var catCounts = countBy(function (o) { return o.cats; });
@@ -1521,6 +1730,52 @@
     });
   }
 
+  /* ---------- Observation time ---------- */
+
+  function formatHour(h) { return String(h).padStart(2, "0") + ":00"; }
+
+  function setObsHour(h) {
+    state.obsHour = h;
+    assignMonths(h);
+    selectors.month.update(monthOptions());
+    render();
+  }
+
+  function bindObsTime() {
+    var btn = $("obs-time-btn");
+    var pop = $("obs-time-pop");
+    var sel = $("obs-hour");
+
+    function setOpen(open) {
+      pop.hidden = !open;
+      btn.setAttribute("aria-expanded", String(open));
+    }
+    function closeMsPopovers() {
+      document.querySelectorAll(".ms-pop:not([hidden])").forEach(function (p) {
+        p.hidden = true;
+        p.parentNode.querySelector(".ms-btn").setAttribute("aria-expanded", "false");
+      });
+    }
+
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      var open = pop.hidden;
+      if (open) closeMsPopovers();
+      setOpen(open);
+    });
+    pop.addEventListener("click", function (e) { e.stopPropagation(); });
+    document.addEventListener("click", function () { if (!pop.hidden) setOpen(false); });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && !pop.hidden) setOpen(false);
+    });
+
+    sel.addEventListener("change", function () {
+      setObsHour(parseInt(this.value, 10));
+      $("obs-time-val").textContent = formatHour(state.obsHour);
+      setOpen(false);
+    });
+  }
+
   function syncAdvancedUi() {
     var n = activeFilterCount();
     $("adv-count").textContent = n;
@@ -1647,18 +1902,24 @@
     clearTimeout(geoTipTimer);
     var btn = $("geo");
     btn.classList.remove("is-done");
+    // Restore the default hover text now that the result is done. If the
+    // pointer is parked on the button the bubble stays hidden by is-quiet, so
+    // the swap is invisible; once it leaves (see mouseleave handler) normal
+    // hover behaviour resumes.
     btn.dataset.tip = GEO_TIP;
-    // Only a pointer that has since moved away should see the prompt again.
-    btn.classList.toggle("is-quiet", btn.matches(":hover"));
+    var parked = btn.matches(":hover") || btn.matches(":focus-visible");
+    if (!parked) btn.classList.remove("is-quiet");
   }
 
   // The button carries no label, so its hover bubble doubles as the success
-  // notice for a moment rather than interrupting with a dialog.
+  // notice for a moment rather than interrupting with a dialog. is-quiet is
+  // intentionally left in place: the success text (is-done) overrides the
+  // suppressed opacity, and when the notice clears we fall straight back to
+  // opacity:0 without ever surfacing the default hover text mid-flow.
   function flashGeoTip(text) {
     clearTimeout(geoTipTimer);
     var btn = $("geo");
     btn.dataset.tip = text;
-    btn.classList.remove("is-quiet");
     btn.classList.add("is-done");
     geoTipTimer = setTimeout(clearGeoTip, 2400);
   }
@@ -1673,6 +1934,11 @@
     }
 
     clearGeoTip();
+    // Once the user triggers a locate, the default hover bubble stays
+    // suppressed for the rest of the session so it can never flash back in
+    // (e.g. while the success notice is up, or after moving away and back).
+    // The silent on-load auto-locate does not change the hover behaviour.
+    if (!silent) $("geo").classList.add("is-quiet");
     geoBusy(true);
     navigator.geolocation.getCurrentPosition(function (pos) {
       geoBusy(false);
@@ -1685,7 +1951,12 @@
       if (!silent) flashGeoTip("已獲取當前緯度");
     }, function (err) {
       geoBusy(false);
-      if (!silent) window.alert(GEO_ERRORS[err.code] || "定位失敗，請手動輸入緯度。");
+      if (!silent) {
+        window.alert(GEO_ERRORS[err.code] || "定位失敗，請手動輸入緯度。");
+        // Result delivered: normal hover behaviour may resume (clearGeoTip
+        // keeps it suppressed only while the pointer is still parked).
+        clearGeoTip();
+      }
     }, { enableHighAccuracy: false, timeout: GEO_TIMEOUT, maximumAge: 300000 });
   }
 
@@ -1701,8 +1972,16 @@
   function bindGeolocate() {
     var btn = $("geo");
     btn.addEventListener("click", function () { requestLocation(false); });
+    // While the operation is running (is-busy) or its success notice is still
+    // on (is-done), leaving the button must not lift the suppression:
+    // re-entering mid-flow would otherwise flash the default prompt. Once the
+    // result is cleared a leave/blur here restores normal hover for next time.
     ["mouseleave", "blur"].forEach(function (evt) {
-      btn.addEventListener(evt, function () { btn.classList.remove("is-quiet"); });
+      btn.addEventListener(evt, function () {
+        if (btn.classList.contains("is-done") || btn.classList.contains("is-busy")) return;
+        btn.classList.remove("is-quiet");
+        btn.dataset.tip = GEO_TIP;
+      });
     });
     autoLocate();
   }
@@ -2251,9 +2530,11 @@
   }
 
   buildHead();
+  assignMonths(state.obsHour);
   buildSelectors();
   bindQuick();
   bindAdvanced();
+  bindObsTime();
   bindInputs();
   bindGeolocate();
   bindLightbox();
