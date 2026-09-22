@@ -13,17 +13,15 @@
     "binding": "ASSETS"
   },
 
-  // id 由 `npx wrangler kv namespace create SESSIONS` 生成后回填。
   "kv_namespaces": [
-    { "binding": "SESSIONS", "id": "REPLACE_WITH_KV_NAMESPACE_ID" }
+    { "binding": "SESSIONS", "id": "972eb298ba0b49bbb3c81bbc270f647f" }
   ],
 
-  // database_id 由 `npx wrangler d1 create harako` 生成后回填。
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "harako",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "database_id": "0838e0c9-98e9-4102-be3b-4bfb77c6afcc",
       "migrations_dir": "migrations"
     }
   ],
