@@ -1,0 +1,9 @@
+# 复制成 .dev.vars 后填入，本地 wrangler dev 会自动读取（已在 .gitignore 里）。
+# 线上用 `npx wrangler secret put <NAME>` 写入，不要提交到仓库。
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+
+# 留空则周报只写 KV 快照并打日志，不发邮件。
+RESEND_API_KEY=
+REVIEW_EMAIL_FROM=
+REVIEW_EMAIL_TO=
