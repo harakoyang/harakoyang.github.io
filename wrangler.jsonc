@@ -1,0 +1,38 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "harako-site",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-22",
+  "observability": { "enabled": true },
+
+  // 刻意不设 not_found_handling：默认的 "none" 会把匹配不到静态文件的路径
+  // 交给 Worker，/api/* 才进得来。换成 "single-page-application" 会让
+  // index.html 吞掉所有未命中路径，API 永远收不到请求。
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+
+  // id 由 `npx wrangler kv namespace create SESSIONS` 生成后回填。
+  "kv_namespaces": [
+    { "binding": "SESSIONS", "id": "REPLACE_WITH_KV_NAMESPACE_ID" }
+  ],
+
+  // database_id 由 `npx wrangler d1 create harako` 生成后回填。
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "harako",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  // 每周一 01:00 UTC（台北时间 09:00）跑一次待 review 汇总。
+  "triggers": { "crons": ["0 1 * * 1"] },
+
+  "vars": {
+    "SITE_URL": "https://harako.cc.cd",
+    "REVIEW_WINDOW_DAYS": "7"
+  }
+}
