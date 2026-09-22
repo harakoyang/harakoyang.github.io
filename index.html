@@ -977,7 +977,7 @@
       </div>
       <div class="legend-card" style="--accent: var(--bad)">
         <h3>紅色 · 不適宜觀測天區</h3>
-        <p>以觀測點緯度為中心，超出天頂正負 45° 的赤緯會標為紅色，目標永遠低於地平線或中天高度過低。</p>
+        <p>以觀測點緯度為中心，超出天頂正負 60° 的赤緯會標為紅色，目標永遠低於地平線或中天高度過低。</p>
         <div class="crit-row">
           <label for="lat">觀測點緯度</label>
           <span class="crit-field">
@@ -1176,7 +1176,7 @@
   var DEFAULT_MAG_MAX = 9.5;
   var DEFAULT_SIZE_MIN = 30;
   // Red marker: declinations more than this far from the zenith never rise high enough.
-  var ALT_SPAN = 45;
+  var ALT_SPAN = 60;
 
   var MONTH_NAMES = ["一月", "二月", "三月", "四月", "五月", "六月",
                      "七月", "八月", "九月", "十月", "十一月", "十二月"];
@@ -1951,7 +1951,7 @@
     navigator.geolocation.getCurrentPosition(function (pos) {
       geoBusy(false);
       var lat = $("lat");
-      // Two decimals is ~1 km of latitude, well past what the ±45° window needs.
+      // Two decimals is ~1 km of latitude, well past what the ±60° window needs.
       lat.value = Math.round(pos.coords.latitude * 100) / 100;
       // Go through the field's own handler so clamping and the DEC window
       // linkage behave exactly as they do for a typed value.
