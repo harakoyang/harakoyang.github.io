@@ -73,6 +73,13 @@ export async function latestSnapshot(request, env) {
   return json({ snapshot });
 }
 
+// cron 一周只跑一次，改完汇总逻辑要等到下周一才知道对不对，所以留一个立即重算的
+// 入口。它跑的就是 scheduled() 调的同一个函数，会照常写快照、照常发信。
+export async function runNow(request, env) {
+  await requireAdmin(request, env);
+  return json({ snapshot: await runWeeklyReview(env) });
+}
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 }

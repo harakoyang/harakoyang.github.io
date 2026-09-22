@@ -1,7 +1,7 @@
 import { HttpError, json } from "./http.js";
 import * as auth from "./auth.js";
 import * as feedback from "./feedback.js";
-import { runWeeklyReview, latestSnapshot } from "./review.js";
+import { runWeeklyReview, latestSnapshot, runNow } from "./review.js";
 
 export default {
   async fetch(request, env) {
@@ -41,7 +41,10 @@ async function route(request, env, url) {
   }
 
   if (method === "GET" && path === "/api/admin/feedback") return feedback.listAll(request, env, url);
-  if (method === "GET" && path === "/api/admin/review") return latestSnapshot(request, env);
+  if (path === "/api/admin/review") {
+    if (method === "GET") return latestSnapshot(request, env);
+    if (method === "POST") return runNow(request, env);
+  }
 
   const statusMatch = path.match(/^\/api\/admin\/feedback\/(\d+)$/);
   if (method === "PATCH" && statusMatch) {
