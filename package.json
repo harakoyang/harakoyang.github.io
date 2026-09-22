@@ -1,0 +1,20 @@
+{
+  "name": "harako-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:init": "wrangler d1 migrations apply harako --local",
+    "db:migrate": "wrangler d1 migrations apply harako --remote",
+    "cron:test": "curl \"http://localhost:8787/cdn-cgi/handler/scheduled\"",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^4.136.1"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "workerd@1.20260921.1": true
+  }
+}
