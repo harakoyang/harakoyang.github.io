@@ -701,6 +701,21 @@
   .chip.is-primary { color: #06102a; background: var(--text); border-color: var(--text); font-weight: 600; }
   .chip:disabled { opacity: 0.45; cursor: default; }
 
+  /* 表格後方的回報入口。提示文案和按鈕要一起隱藏，否則沒有 Worker 時會留下
+     一句沒有下文的問句，所以 JS 切的是整塊而不是按鈕。 */
+  .fb-cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    margin-top: 22px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+  }
+  .fb-cta[hidden] { display: none; }
+  .fb-cta p { margin: 0; font-size: 13.5px; color: var(--muted); }
+
   #fb-modal {
     position: fixed;
     inset: 0;
@@ -1064,12 +1079,6 @@
           <p class="obs-time-note" id="obs-time-note">依赤經推算在 00:00，天體處於中天高度的月份。</p>
         </div>
       </div>
-      <button type="button" class="pill-btn" id="fb-open" hidden="">
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M20 14.6a2 2 0 0 1-2 2H8.6L4.5 20V5.4a2 2 0 0 1 2-2H18a2 2 0 0 1 2 2Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
-        </svg>
-        回報資料問題
-      </button>
     </div>
 
     <div class="legend">
@@ -1202,6 +1211,16 @@
     </div>
 
     <p class="empty" id="empty" hidden="">沒有符合條件的天體 / No objects match these filters.</p>
+
+    <div class="fb-cta" id="fb-cta" hidden="">
+      <p>表中的星等、視徑或名稱與你的資料來源不符？</p>
+      <button type="button" class="pill-btn" id="fb-open">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M20 14.6a2 2 0 0 1-2 2H8.6L4.5 20V5.4a2 2 0 0 1 2-2H18a2 2 0 0 1 2 2Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
+        </svg>
+        回報資料問題
+      </button>
+    </div>
   </section>
 
   <section aria-labelledby="glo-h">
@@ -2814,7 +2833,7 @@
     api("/api/me").then(function (body) {
       account.user = body.user;
       $("acct").hidden = false;
-      $("fb-open").hidden = false;
+      $("fb-cta").hidden = false;
       syncAccountUi();
       syncFbCount();
     }).catch(function () {});
