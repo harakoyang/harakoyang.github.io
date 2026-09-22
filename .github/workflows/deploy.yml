@@ -1,0 +1,38 @@
+# push 到 dev 即自动部署到 Cloudflare Workers（含 D1 迁移）。
+# 需要在 GitHub 仓库 Settings → Secrets and variables → Actions 配置：
+#   CLOUDFLARE_API_TOKEN  — 用「Edit Cloudflare Workers」模板创建，额外加 D1:Edit 与 Workers KV Storage:Edit 权限
+#   CLOUDFLARE_ACCOUNT_ID — Cloudflare 控制台右侧 / Workers & Pages 概览可见
+name: Deploy
+
+on:
+  push:
+    branches: [dev]
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Apply D1 migrations
+        run: npx wrangler d1 migrations apply harako --remote
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deploy
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
