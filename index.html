@@ -3,7 +3,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>天体観測「Tentai Kansoku」Catalogue</title>
-<meta name="description" content="各月份最適觀測深空天體列表 — 142 個深空天體，可依月份、星等、視徑、名稱、赤經、赤緯、星座逐欄篩選。">
+<meta name="description" content="各月份最適觀測深空天體">
 <style>
   :root {
     --bg: #04081a;
@@ -929,7 +929,7 @@
 
   <section aria-labelledby="cat-h">
     <div class="cat-head">
-      <h2 id="cat-h">各月份最適觀測深空天體列表</h2>
+      <h2 id="cat-h">各月份最適觀測深空天體</h2>
       <div class="obs-time" id="obs-time">
         <button type="button" class="obs-time-btn" id="obs-time-btn" aria-haspopup="true" aria-expanded="false">
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -955,7 +955,7 @@
             <option value="5">05:00</option>
             <option value="6">06:00</option>
           </select>
-          <p class="obs-time-note">依天體的赤經推算在所選觀測時刻，該天體處於中天高度的月份。</p>
+          <p class="obs-time-note" id="obs-time-note">依赤經推算在 00:00，天體處於中天高度的月份。</p>
         </div>
       </div>
     </div>
@@ -1738,7 +1738,14 @@
     state.obsHour = h;
     assignMonths(h);
     selectors.month.update(monthOptions());
+    syncObsTimeUi();
     render();
+  }
+
+  function syncObsTimeUi() {
+    $("obs-time-val").textContent = formatHour(state.obsHour);
+    $("obs-time-note").textContent =
+      "依赤經推算在 " + formatHour(state.obsHour) + "，天體處於中天高度的月份。";
   }
 
   function bindObsTime() {
@@ -1771,9 +1778,10 @@
 
     sel.addEventListener("change", function () {
       setObsHour(parseInt(this.value, 10));
-      $("obs-time-val").textContent = formatHour(state.obsHour);
       setOpen(false);
     });
+
+    syncObsTimeUi();
   }
 
   function syncAdvancedUi() {
