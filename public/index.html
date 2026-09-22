@@ -731,6 +731,7 @@
     width: min(520px, 100%);
     max-height: calc(100vh - 40px);
     overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 22px;
     background: var(--panel-solid);
     border: 1px solid var(--line-strong);
@@ -753,6 +754,33 @@
   .fb-mine { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
   .fb-mine[hidden] { display: none; }
   .fb-mine h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--muted); }
+  .fb-mine h3 span { font-weight: 400; font-variant-numeric: tabular-nums; }
+  /* 列表自己滾，讓上方的表單在翻舊紀錄時留在原地。這裡是全站唯一保留可見捲軸
+     的地方 —— 紀錄是變高的文字塊，沒有捲軸就看不出下面還有多少。 */
+  #fb-mine-list {
+    max-height: 260px;
+    overflow-y: auto;
+    /* 滾到頭尾後不要把滾動傳給頁面，否則翻完紀錄會順手把背後的目錄一起帶跑。 */
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+  }
+  #fb-mine-list::-webkit-scrollbar { width: 0; height: 0; }
+  /* 原生捲軸即使塗成透明也會占掉版面寬度，紀錄在「裝得下 / 裝不下」之間切換時
+     文字會橫向跳動。改成自繪滑塊浮在列表右緣，完全不參與版面；捲動時淡入、
+     停手後淡出，同 .lb-indicator 的做法。 */
+  .fb-mine-scroll { position: relative; }
+  .fb-mine-bar {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 4px;
+    border-radius: 999px;
+    background: var(--line-strong);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s;
+  }
+  .fb-mine-scroll.is-visible .fb-mine-bar { opacity: 1; }
   .fb-item { padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
   .fb-item:last-child { border-bottom: none; }
   .fb-item-head {
@@ -1213,7 +1241,7 @@
     <p class="empty" id="empty" hidden="">沒有符合條件的天體 / No objects match these filters.</p>
 
     <div class="fb-cta" id="fb-cta" hidden="">
-      <p>表中的星等、視徑或名稱與你的資料來源不符？</p>
+      <p>表中的星等、視徑、名稱或縮略圖與你手上的資料來源不符？</p>
       <button type="button" class="pill-btn" id="fb-open">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M20 14.6a2 2 0 0 1-2 2H8.6L4.5 20V5.4a2 2 0 0 1 2-2H18a2 2 0 0 1 2 2Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
@@ -1306,8 +1334,11 @@
     </form>
 
     <div class="fb-mine" id="fb-mine" hidden="">
-      <h3>我的回報</h3>
-      <div id="fb-mine-list"></div>
+      <h3>我的回報<span id="fb-mine-count"></span></h3>
+      <div class="fb-mine-scroll" id="fb-mine-scroll">
+        <div id="fb-mine-list"></div>
+        <div class="fb-mine-bar" id="fb-mine-bar" aria-hidden="true"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -2715,6 +2746,7 @@
   };
 
   var account = { user: null };
+  var mineBarTimer;
 
   function api(path, options) {
     var opts = options || {};
@@ -2785,13 +2817,38 @@
       esc(item.content) + "</div></div>";
   }
 
+  // 滑塊高度取「可視高度占總高度的比例」，但給個下限，否則紀錄一多滑塊會細到
+  // 看不見。位置按已滾距離在可滾範圍裡的比例換算。
+  function syncMineBar() {
+    var list = $("fb-mine-list");
+    var bar = $("fb-mine-bar");
+    var max = list.scrollHeight - list.clientHeight;
+    if (max <= 0) { bar.style.height = "0"; return; }
+
+    var h = Math.max(28, list.clientHeight * list.clientHeight / list.scrollHeight);
+    bar.style.height = h + "px";
+    bar.style.transform = "translateY(" + (list.scrollTop / max) * (list.clientHeight - h) + "px)";
+  }
+
+  function flashMineBar() {
+    syncMineBar();
+    $("fb-mine-scroll").classList.add("is-visible");
+    clearTimeout(mineBarTimer);
+    mineBarTimer = setTimeout(function () {
+      $("fb-mine-scroll").classList.remove("is-visible");
+    }, 700);
+  }
+
   function loadMyFeedback() {
     return api("/api/feedback").then(function (body) {
       var items = body.items || [];
+      $("fb-mine-count").textContent = items.length ? "（" + items.length + "）" : "";
       $("fb-mine-list").innerHTML = items.length
         ? items.map(fbItemHtml).join("")
         : '<p class="fb-empty">還沒有回報紀錄。</p>';
+      syncMineBar();
     }).catch(function () {
+      $("fb-mine-count").textContent = "";
       $("fb-mine-list").innerHTML = '<p class="fb-empty">回報紀錄載入失敗。</p>';
     });
   }
@@ -2867,6 +2924,8 @@
     $("fb-backdrop").addEventListener("click", function () { fbSetOpen(false); });
     $("fb-form").addEventListener("submit", submitFeedback);
     $("fb-content").addEventListener("input", syncFbCount);
+
+    $("fb-mine-list").addEventListener("scroll", flashMineBar, { passive: true });
 
     document.addEventListener("keydown", function (e) {
       if (e.key !== "Escape") return;
