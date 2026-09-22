@@ -4,6 +4,10 @@ const SESSION_TTL = 60 * 60 * 24 * 30;
 const STATE_TTL = 60 * 10;
 const GITHUB_SCOPE = "read:user user:email";
 
+// 两个 GitHub 请求都必须带 UA：Worker 的出口是 Cloudflare 的共享 IP，GitHub 会把
+// 共享 IP 上没有 UA 的请求当爬虫，api.github.com 直接回 403，token 交换端点回 429。
+const USER_AGENT = "harako-site";
+
 // state 存 cookie 而不是 KV：KV 免费版每天只有 1000 次写入，每次登录尝试都
 // 写一条 state 会让失败的、被放弃的登录也吃配额。cookie 由浏览器自己带回来，
 // 校验只要比对值相等，服务端零存储。
@@ -71,7 +75,11 @@ export async function callback(request, env, url) {
 async function fetchGithubProfile(code, request, env) {
   const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
     method: "POST",
-    headers: { accept: "application/json", "content-type": "application/json" },
+    headers: {
+      accept: "application/json",
+      "content-type": "application/json",
+      "user-agent": USER_AGENT,
+    },
     body: JSON.stringify({
       client_id: env.GITHUB_CLIENT_ID,
       client_secret: env.GITHUB_CLIENT_SECRET,
@@ -80,15 +88,20 @@ async function fetchGithubProfile(code, request, env) {
     }),
   });
   const token = await tokenRes.json();
-  if (!token.access_token) throw new HttpError(502, token.error_description || "token exchange failed");
+  if (!token.access_token) {
+    // GitHub 对凭据错误、回调地址未登记、授权码过期这几种情况回的都是 200 + 一个
+    // error 码，error_description 不保证有。只报 description 的话这几种原因看起来
+    // 一模一样，没法判断该去改 secret 还是改 Redirect URI，所以把 error 码带上。
+    const detail = [token.error, token.error_description].filter(Boolean).join(": ");
+    throw new HttpError(502, detail || `token exchange failed (HTTP ${tokenRes.status})`);
+  }
 
-  // GitHub 拒绝没有 User-Agent 的请求，缺了会直接 403。
   const api = (path) =>
     fetch(`https://api.github.com${path}`, {
       headers: {
         authorization: `Bearer ${token.access_token}`,
         accept: "application/vnd.github+json",
-        "user-agent": "harako-site",
+        "user-agent": USER_AGENT,
       },
     }).then((r) => r.json());
 
