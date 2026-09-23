@@ -1,4 +1,6 @@
-# push 到 dev 即自动部署到 Cloudflare Workers（含 D1 迁移）。
+# push main 部署生产（harako.cc.cd），push dev 部署预发（dev.harako.cc.cd）。
+# 两套环境各自挂独立的 KV 与 D1，见 wrangler.jsonc 的 env.dev。
+#
 # 需要在 GitHub 仓库 Settings → Secrets and variables → Actions 配置：
 #   CLOUDFLARE_API_TOKEN  — 用「Edit Cloudflare Workers」模板创建，额外加 D1:Edit 与 Workers KV Storage:Edit 权限
 #   CLOUDFLARE_ACCOUNT_ID — Cloudflare 控制台右侧 / Workers & Pages 概览可见
@@ -6,10 +8,11 @@ name: Deploy
 
 on:
   push:
-    branches: [dev]
+    branches: [main, dev]
 
+# 按分支分组：预发的部署不该把正在跑的生产部署取消掉。
 concurrency:
-  group: deploy-dev
+  group: deploy-${{ github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -25,14 +28,28 @@ jobs:
 
       - run: npm ci
 
+      # 把分支映射成 wrangler 的目标，后面两步共用，避免同一个判断写两遍。
+      - name: Resolve target
+        id: target
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "args=" >> "$GITHUB_OUTPUT"
+            echo "db=harako" >> "$GITHUB_OUTPUT"
+          else
+            echo "args=--env dev" >> "$GITHUB_OUTPUT"
+            echo "db=harako-dev" >> "$GITHUB_OUTPUT"
+          fi
+
+      # 迁移排在部署前面：新代码可能依赖新的表结构，反过来会有一小段时间
+      # 线上代码查不到栏位。D1 迁移不可回滚，加迁移档时要特别确认。
       - name: Apply D1 migrations
-        run: npx wrangler d1 migrations apply harako --remote
+        run: npx wrangler d1 migrations apply ${{ steps.target.outputs.db }} --remote ${{ steps.target.outputs.args }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Deploy
-        run: npx wrangler deploy
+        run: npx wrangler deploy ${{ steps.target.outputs.args }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
