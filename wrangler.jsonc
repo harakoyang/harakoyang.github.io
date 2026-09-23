@@ -5,6 +5,11 @@
   "compatibility_date": "2026-09-22",
   "observability": { "enabled": true },
 
+  // 关掉 workers.dev 子域。开着的话 harako-site.<子域>.workers.dev 会是生产站
+  // 一份功能完整的公开副本，登入与回报都写进同一个生产 D1。预发走
+  // dev.harako.cc.cd，不需要这个兜底入口。
+  "workers_dev": false,
+
   // 刻意不设 not_found_handling：默认的 "none" 会把匹配不到静态文件的路径
   // 交给 Worker，/api/* 才进得来。换成 "single-page-application" 会让
   // index.html 吞掉所有未命中路径，API 永远收不到请求。
@@ -32,5 +37,44 @@
   "vars": {
     "SITE_URL": "https://harako.cc.cd",
     "REVIEW_WINDOW_DAYS": "7"
+  },
+
+  // 顶层即生产（harako-site），由 main 分支部署；env.dev 是预发（harako-site-dev），
+  // 由 dev 分支部署。
+  //
+  // KV、D1、vars 这几项 wrangler 不会从顶层继承到具名环境，必须逐项重写 ——
+  // 这里正好是我们要的：预发挂的是另一套 KV 与 D1，跑 dev 不会动到生产的
+  // 帐号和回报资料。漏写会直接部署失败，而不是悄悄连上生产库。
+  "env": {
+    "dev": {
+      "kv_namespaces": [
+        { "binding": "SESSIONS", "id": "42ba7894a1bc45d9a908b360231c114b" }
+      ],
+
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "harako-dev",
+          "database_id": "8e3f71be-d148-46ff-823c-1d1ccc579abb",
+          "migrations_dir": "migrations"
+        }
+      ],
+
+      // SITE_URL 必须跟着预发域名走：OAuth 的 redirect_uri 会拿它跟请求的
+      // hostname 比对，不改的话预发登入会被导回生产站。
+      "vars": {
+        "SITE_URL": "https://dev.harako.cc.cd",
+        "REVIEW_WINDOW_DAYS": "7"
+      },
+
+      // 生产的自订网域是在面板上挂的，沿用现状不写进设定；预发这条是新的，
+      // 交给 wrangler 建，省掉手动点一次。
+      "routes": [
+        { "pattern": "dev.harako.cc.cd", "custom_domain": true }
+      ],
+
+      // 预发不跑周报：同一份汇总寄两封没有意义，而且预发库里都是测试资料。
+      "triggers": { "crons": [] }
+    }
   }
 }
