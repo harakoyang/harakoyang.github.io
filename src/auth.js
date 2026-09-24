@@ -50,6 +50,9 @@ const PROVIDERS = {
     clientIdVar: "GITHUB_CLIENT_ID",
     clientSecretVar: "GITHUB_CLIENT_SECRET",
     fetchProfile: fetchGithubProfile,
+    // GitHub OAuth App 只注册一个 callback，子路径放行规则实测不可靠
+    // （dev 新 App 用子路径直接被拒），授权与换 token 统一走无后缀精确地址。
+    legacyCallback: true,
   },
   google: {
     authorizeUrl: "https://accounts.google.com/o/oauth2/v2/auth",
@@ -68,7 +71,7 @@ export function login(request, env, provider = "github", opts = {}) {
   const cfg = PROVIDERS[provider];
   if (!cfg) throw new HttpError(400, "unknown provider");
 
-  const ri = redirectUri(request, env, provider, opts.legacy);
+  const ri = redirectUri(request, env, provider, opts.legacy || cfg.legacyCallback);
   const state = crypto.randomUUID();
 
   let location;
