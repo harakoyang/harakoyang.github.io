@@ -15,7 +15,14 @@ export default {
     try {
       return await route(request, env, url);
     } catch (err) {
-      if (err instanceof HttpError) return json({ error: err.message }, { status: err.status });
+      if (err instanceof HttpError) {
+        const init = { status: err.status };
+        if (err.details && typeof err.details.retry_after === "number") {
+          // Retry-After 是標準頭，值為秒；內容同步放進 JSON 方便前端直接讀。
+          init.headers = { "retry-after": String(err.details.retry_after) };
+        }
+        return json({ error: err.message, ...(err.details || {}) }, init);
+      }
       console.error(err);
       return json({ error: "internal error" }, { status: 500 });
     }
@@ -40,6 +47,11 @@ async function route(request, env, url) {
 
   const callbackMatch = path.match(/^\/api\/auth\/callback\/(github|google)$/);
   if (method === "GET" && callbackMatch) return auth.callback(request, env, url, callbackMatch[1]);
+
+  // 站內信箱註冊/登入：GET /api/auth/login 仍是 GitHub legacy 跳轉，
+  // 這兩條只收 POST，方法不同互不衝突。
+  if (method === "POST" && path === "/api/auth/register") return auth.register(request, env);
+  if (method === "POST" && path === "/api/auth/login") return auth.passwordLogin(request, env);
 
   // 前端拉取已配置的 provider 列表，按需显示登录按钮
   if (method === "GET" && path === "/api/auth/providers") return auth.providers(request, env);

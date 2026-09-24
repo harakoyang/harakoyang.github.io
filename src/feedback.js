@@ -17,12 +17,26 @@ export async function create(request, env) {
   // target 指反馈针对的目标，如 "M42" 或 "page:catalogue"，允许为空。
   const target = typeof body.target === "string" ? body.target.slice(0, 64) : null;
 
+  const now = Date.now();
   const recent = await env.DB.prepare(
     "SELECT COUNT(*) AS n FROM feedback WHERE user_id = ? AND created_at > ?"
   )
-    .bind(user.id, Date.now() - 3600_000)
+    .bind(user.id, now - 3600_000)
     .first();
-  if (recent.n >= HOURLY_QUOTA) throw new HttpError(429, "too many submissions, try later");
+  if (recent.n >= HOURLY_QUOTA) {
+    // 滾動視窗：配額在「視窗內最早一條」滿一小時滑出視窗後恢復。
+    // 倒數第 HOURLY_QUOTA 條（OFFSET 配額-1）就是目前擋門的那條。
+    const blocking = await env.DB.prepare(
+      `SELECT created_at FROM feedback WHERE user_id = ?
+       ORDER BY created_at DESC LIMIT 1 OFFSET ?`
+    )
+      .bind(user.id, HOURLY_QUOTA - 1)
+      .first();
+    const retryAfter = blocking
+      ? Math.max(1, Math.ceil((blocking.created_at + 3600_000 - now) / 1000))
+      : 3600;
+    throw new HttpError(429, "too many submissions, try later", { retry_after: retryAfter });
+  }
 
   const row = await env.DB.prepare(
     "INSERT INTO feedback (user_id, target, content, created_at) VALUES (?, ?, ?, ?) RETURNING id"
