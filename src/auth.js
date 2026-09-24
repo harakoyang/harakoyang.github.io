@@ -114,11 +114,7 @@ export async function callback(request, env, url, provider = "github") {
 
   const profile = await cfg.fetchProfile(code, request, env);
   const userId = await upsertUser(env, profile);
-  const sid = crypto.randomUUID();
-
-  await env.SESSIONS.put(`sess:${sid}`, JSON.stringify({ uid: userId }), {
-    expirationTtl: SESSION_TTL,
-  });
+  const sid = await issueSession(env, userId);
 
   const headers = new Headers({ location: "/" });
   headers.append("set-cookie", clearCookieHeader("oauth_state"));
@@ -260,8 +256,162 @@ async function upsertUser(env, profile) {
 }
 
 // ---------------------------------------------------------------------------
+// Email + password —— 站內自行註冊，不依賴任何第三方 OAuth 設定
+// ---------------------------------------------------------------------------
+
+const PBKDF2_ITERATIONS = 100_000;
+const PASSWORD_MIN = 8;
+const PASSWORD_MAX = 128;
+const LOGIN_MAX = 40;
+const EMAIL_MAX = 254;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const textEncoder = new TextEncoder();
+
+function bufToB64(bytes) {
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin);
+}
+
+function b64ToBuf(b64) {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+async function derivePasswordBits(password, salt, iterations) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    textEncoder.encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  );
+  return new Uint8Array(
+    await crypto.subtle.deriveBits(
+      { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
+      key,
+      256
+    )
+  );
+}
+
+// 儲存格式：pbkdf2$<迭代數>$<salt b64>$<hash b64>。迭代數寫進字串，
+// 以後要調高強度可以按帳號逐個升級，不用一次清掉所有密碼。
+async function hashPassword(password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const bits = await derivePasswordBits(password, salt, PBKDF2_ITERATIONS);
+  return `pbkdf2$${PBKDF2_ITERATIONS}$${bufToB64(salt)}$${bufToB64(bits)}`;
+}
+
+async function verifyPassword(password, stored) {
+  const parts = typeof stored === "string" ? stored.split("$") : [];
+  if (parts.length !== 4 || parts[0] !== "pbkdf2") return false;
+  let salt;
+  let expected;
+  try {
+    salt = b64ToBuf(parts[2]);
+    expected = b64ToBuf(parts[3]);
+  } catch {
+    return false;
+  }
+  const actual = await derivePasswordBits(password, salt, Number(parts[1]));
+  if (actual.length !== expected.length) return false;
+  // 常數時間比較，避免逐位元組洩漏密碼雜湊內容。
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) diff |= actual[i] ^ expected[i];
+  return diff === 0;
+}
+
+async function readCredentials(request) {
+  const body = await request.json().catch(() => null);
+  if (!body) throw new HttpError(400, "expected json body");
+  return {
+    login: typeof body.login === "string" ? body.login.trim() : "",
+    email: typeof body.email === "string" ? body.email.trim().toLowerCase() : "",
+    password: typeof body.password === "string" ? body.password : "",
+  };
+}
+
+export async function register(request, env) {
+  const { login, email, password } = await readCredentials(request);
+
+  if (!login) throw new HttpError(400, "login is required");
+  if (login.length > LOGIN_MAX) throw new HttpError(400, `login exceeds ${LOGIN_MAX} chars`);
+  if (email.length > EMAIL_MAX || !EMAIL_RE.test(email)) {
+    throw new HttpError(400, "invalid email");
+  }
+  if (password.length < PASSWORD_MIN) {
+    throw new HttpError(400, `password must be at least ${PASSWORD_MIN} characters`);
+  }
+  if (password.length > PASSWORD_MAX) {
+    throw new HttpError(400, `password must be at most ${PASSWORD_MAX} characters`);
+  }
+
+  const dup = await env.DB.prepare(
+    "SELECT id FROM users WHERE provider = 'email' AND provider_uid = ?"
+  )
+    .bind(email)
+    .first();
+  if (dup) throw new HttpError(409, "email already registered");
+
+  // 與 OAuth 路徑一致：第一個註冊者（不分 provider）自動成為 admin。
+  const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM users").first();
+  const id = crypto.randomUUID();
+  await env.DB.prepare(
+    `INSERT INTO users
+       (id, provider, provider_uid, login, email, avatar_url, role, created_at, password_hash)
+     VALUES (?, 'email', ?, ?, ?, NULL, ?, ?, ?)`
+  )
+    .bind(id, email, login, email, count.n === 0 ? "admin" : "user", Date.now(), await hashPassword(password))
+    .run();
+
+  const user = await userById(env, id);
+  const sid = await issueSession(env, id);
+  return json({ user }, { headers: { "set-cookie": cookieHeader("sess", sid, SESSION_TTL) } });
+}
+
+export async function passwordLogin(request, env) {
+  const { email, password } = await readCredentials(request);
+
+  const row = await env.DB.prepare(
+    "SELECT id, password_hash FROM users WHERE provider = 'email' AND provider_uid = ?"
+  )
+    .bind(email)
+    .first();
+
+  // 信箱不存在與密碼錯誤回同一則訊息，不幫攻擊者列舉站上已註冊的信箱。
+  // 信箱格式在這裡不另外報錯：查無此人自然走同一個 401。
+  if (!row || !(await verifyPassword(password, row.password_hash))) {
+    throw new HttpError(401, "invalid email or password");
+  }
+
+  const user = await userById(env, row.id);
+  const sid = await issueSession(env, row.id);
+  return json({ user }, { headers: { "set-cookie": cookieHeader("sess", sid, SESSION_TTL) } });
+}
+
+// ---------------------------------------------------------------------------
 // Session 管理（provider 无关，不改动）
 // ---------------------------------------------------------------------------
+
+// OAuth callback 與信箱註冊/登入三條路共用：session 只存 users.id，
+// 其餘資料一律查庫，改暱稱或頭像後下一請求即生效。
+async function issueSession(env, userId) {
+  const sid = crypto.randomUUID();
+  await env.SESSIONS.put(`sess:${sid}`, JSON.stringify({ uid: userId }), {
+    expirationTtl: SESSION_TTL,
+  });
+  return sid;
+}
+
+async function userById(env, id) {
+  return env.DB.prepare("SELECT id, login, email, avatar_url, role FROM users WHERE id = ?")
+    .bind(id)
+    .first();
+}
 
 export async function logout(request, env) {
   const sid = readCookie(request, "__Host-sess");
@@ -301,9 +451,11 @@ export async function me(request, env) {
 }
 
 // 前端拉取这个列表，按实际配置渲染对应按钮，未配置的 provider 不显示。
+// email 是站內自辦的註冊/登入，不需要任何外部憑據，永遠可用。
 export function providers(request, env) {
   const list = [];
   if (env.GITHUB_CLIENT_ID) list.push("github");
   if (env.GOOGLE_CLIENT_ID) list.push("google");
+  list.push("email");
   return json({ providers: list });
 }
