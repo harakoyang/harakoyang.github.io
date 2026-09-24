@@ -265,7 +265,8 @@
   }
 
   /* ---------- Form controls ---------- */
-  input[type="text"], input[type="search"], input[type="number"], select, textarea {
+  input[type="text"], input[type="search"], input[type="number"],
+  input[type="email"], input[type="password"], select, textarea {
     padding: 8px 12px;
     font: inherit;
     font-size: 14px;
@@ -748,19 +749,20 @@
     z-index: 210;
     display: grid;
     place-items: center;
-    /* 彈窗與視口四邊的間距；彈窗高度 = 100vh 減去兩倍這個值，改這一處即可。
-       行動端在底部 media query 覆寫為 80px。 */
+    /* 彈窗與視口四邊的間距；彈窗「最大」高度 = 100vh 減去兩倍這個值，改這一處即可。
+       桌面與行動端共用同一套規則。 */
     --fb-vm: 20px;
     padding: var(--fb-vm);
   }
   #fb-modal[hidden] { display: none; }
-  .fb-backdrop { position: absolute; inset: 0; background: rgba(2, 6, 18, 0.82); }
+  /* touch-action: none 讓行動端從遮罩起手的滑動不會捲到背後的頁面。 */
+  .fb-backdrop { position: absolute; inset: 0; background: rgba(2, 6, 18, 0.82); touch-action: none; }
   .fb-dialog {
     position: relative;
     display: flex;
     flex-direction: column;
     width: min(520px, 100%);
-    height: calc(100vh - 2 * var(--fb-vm));
+    max-height: calc(100vh - 2 * var(--fb-vm));
     padding: 22px;
     /* 平時內容都裝得下（列表會吸收多餘空間）；視口太矮裝不下時整窗才滾動。 */
     overflow-y: auto;
@@ -792,11 +794,6 @@
     transition: opacity .25s;
   }
   .fb-dialog-bar-wrap.is-visible .fb-dialog-bar { opacity: 1; }
-  /* 訪客視圖只有一句登入提示和按鈕，撐滿高度會留下大塊空白，改回隨內容定高。 */
-  .fb-dialog:has(#fb-mine[hidden]) {
-    height: auto;
-    max-height: calc(100vh - 2 * var(--fb-vm));
-  }
   .fb-dialog h2 { margin: 0 0 6px; font-size: 18px; }
   .fb-dialog .section-note { margin-bottom: 18px; }
   .fb-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
@@ -812,8 +809,8 @@
   .fb-msg.is-ok { color: var(--ok); background: var(--ok-bg); }
   .fb-msg.is-bad { color: var(--bad); background: var(--bad-bg); }
 
-  /* 彈窗固定為「視口高 − 外距」，多餘空間由「我的回報」列表吸收變長；
-     空間不夠時也只有它收縮自滾。鏈上每層都要 min-height: 0。 */
+  /* 彈窗高度隨內容，上限為「視口高 − 外距」；裝不下時只有「我的回報」列表
+     收縮並自滾。鏈上每層都要 min-height: 0。 */
   .fb-mine {
     display: flex;
     flex-direction: column;
@@ -1124,10 +1121,53 @@
     tbody tr:hover td { background: none; }
     tbody tr:hover td.mark-ok { background: var(--ok-bg); }
     tbody tr:hover td.mark-bad { background: var(--bad-bg); }
-
-    /* 行動端維持較大的外距，桌面端為 20px（見 #fb-modal 基底規則）。 */
-    #fb-modal { --fb-vm: 80px; }
   }
+
+  /* ---------- Email 註冊/登入彈窗 ----------
+     不塞進右上帳號彈層：該彈層位於 .hero 內、受 overflow:hidden 裁切，
+     表單太高會被直接切掉。獨立開一個置中彈窗，z-index 壓過回報彈窗，
+     因此可從回報彈窗的訪客視圖直接疊上來，登入成功後無縫切回。 */
+  #auth-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 220;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+  }
+  #auth-modal[hidden] { display: none; }
+  .auth-backdrop { position: absolute; inset: 0; background: rgba(2, 6, 18, 0.82); }
+  .auth-dialog {
+    position: relative;
+    width: min(380px, 100%);
+    padding: 22px;
+    background: var(--panel-solid);
+    border: 1px solid var(--line-strong);
+    border-radius: 14px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  }
+  .auth-dialog h2 { margin: 0 0 16px; font-size: 18px; }
+  .auth-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+  .auth-field[hidden] { display: none; }
+  .auth-field label { font-size: 13px; color: var(--muted); }
+  .auth-field input { width: 100%; box-sizing: border-box; }
+  .auth-msg { margin: 0 0 12px; padding: 8px 11px; font-size: 13px; border-radius: 9px; }
+  .auth-msg[hidden] { display: none; }
+  .auth-msg.is-bad { color: var(--bad); background: var(--bad-bg); }
+  .auth-actions { display: flex; justify-content: flex-end; gap: 8px; }
+  .auth-switch {
+    display: block;
+    margin: 12px auto 0;
+    padding: 4px 10px;
+    font: inherit;
+    font-size: 12.5px;
+    color: var(--muted);
+    background: none;
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+  }
+  @media (hover: hover) { .auth-switch:hover { color: var(--text); } }
 </style>
 </head>
 <body>
@@ -1151,6 +1191,10 @@
         <button type="button" class="provider-btn" data-provider="google" hidden>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.04 12.26c0-.82-.07-1.6-.2-2.36H12v4.46h6.16a5.27 5.27 0 01-2.29 3.46v2.88h3.72c2.18-2.01 3.45-4.97 3.45-8.44z"/><path fill="#34A853" d="M12 24c3.12 0 5.74-1.04 7.65-2.81l-3.72-2.88c-1.03.69-2.35 1.1-3.93 1.1-3.02 0-5.58-2.04-6.5-4.79H1.68v2.97A11.99 11.99 0 0012 24z"/><path fill="#FBBC05" d="M5.5 14.62c-.23-.69-.36-1.43-.36-2.62 0-1.19.13-1.93.36-2.62V6.41H1.68A11.99 11.99 0 000 12c0 1.94.46 3.77 1.68 5.59l3.82-2.97z"/><path fill="#EA4335" d="M12 4.75c1.65 0 3.14.57 4.32 1.69l3.21-3.21C17.74 1.04 15.12 0 12 0 7.31 0 3.23 2.69 1.68 6.41l3.82 2.97C6.42 6.79 8.98 4.75 12 4.75z"/></svg>
           使用 Google 登入
+        </button>
+        <button type="button" class="provider-btn" data-provider="email" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+          使用電子郵件登入
         </button>
       </div>
       <button type="button" id="acct-mine" hidden="">我的回報</button>
@@ -1412,6 +1456,10 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.04 12.26c0-.82-.07-1.6-.2-2.36H12v4.46h6.16a5.27 5.27 0 01-2.29 3.46v2.88h3.72c2.18-2.01 3.45-4.97 3.45-8.44z"/><path fill="#34A853" d="M12 24c3.12 0 5.74-1.04 7.65-2.81l-3.72-2.88c-1.03.69-2.35 1.1-3.93 1.1-3.02 0-5.58-2.04-6.5-4.79H1.68v2.97A11.99 11.99 0 0012 24z"/><path fill="#FBBC05" d="M5.5 14.62c-.23-.69-.36-1.43-.36-2.62 0-1.19.13-1.93.36-2.62V6.41H1.68A11.99 11.99 0 000 12c0 1.94.46 3.77 1.68 5.59l3.82-2.97z"/><path fill="#EA4335" d="M12 4.75c1.65 0 3.14.57 4.32 1.69l3.21-3.21C17.74 1.04 15.12 0 12 0 7.31 0 3.23 2.69 1.68 6.41l3.82 2.97C6.42 6.79 8.98 4.75 12 4.75z"/></svg>
           使用 Google 登入
         </button>
+        <button type="button" class="chip is-primary" data-provider="email" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+          使用電子郵件登入
+        </button>
       </div>
     </div>
 
@@ -1439,6 +1487,31 @@
       </div>
     </div>
   </div>
+</div>
+
+<div id="auth-modal" hidden="">
+  <div class="auth-backdrop" id="auth-backdrop"></div>
+  <form class="auth-dialog" role="dialog" aria-modal="true" aria-labelledby="auth-h" id="auth-form">
+    <h2 id="auth-h">登入帳號</h2>
+    <div class="auth-field" id="auth-name-field" hidden="">
+      <label for="auth-name">顯示名稱</label>
+      <input type="text" id="auth-name" maxlength="40" autocomplete="username" placeholder="怎麼稱呼你">
+    </div>
+    <div class="auth-field">
+      <label for="auth-email">電子郵件</label>
+      <input type="email" id="auth-email" maxlength="254" autocomplete="email" inputmode="email" placeholder="you@example.com">
+    </div>
+    <div class="auth-field">
+      <label for="auth-password">密碼</label>
+      <input type="password" id="auth-password" minlength="8" maxlength="128" autocomplete="current-password" placeholder="至少 8 個字元">
+    </div>
+    <p class="auth-msg" id="auth-msg" hidden=""></p>
+    <div class="auth-actions">
+      <button type="button" class="chip" id="auth-cancel">取消</button>
+      <button type="submit" class="chip is-primary" id="auth-submit">登入</button>
+    </div>
+    <button type="button" class="auth-switch" id="auth-switch">還沒有帳號？立即註冊</button>
+  </form>
 </div>
 
 <script src="assets/catalogue.js?v=local-images"></script>
@@ -2842,12 +2915,92 @@
     "too many submissions, try later": "回報太頻繁了，請稍後再試。",
     "content is required": "請填寫回報內容。"
   };
+  // 信箱註冊/登入的錯誤文案，對應 Worker 回的英文 error 串。
+  var EA_ERRORS = {
+    "login is required": "請填寫顯示名稱。",
+    "invalid email": "電子郵件格式不正確。",
+    "password must be at least 8 characters": "密碼至少要 8 個字元。",
+    "email already registered": "此電子郵件已註冊，請直接登入。",
+    "invalid email or password": "電子郵件或密碼錯誤。"
+  };
+
+  /* =====================================================================
+     【臨時聯調 mock，聯調就緒後請整塊刪除】（含 api() 裡的調用行）
+     觸發位址：http://localhost:8000/?mock=auth
+     - /api/me 恆回訪客；/api/auth/providers 回含 email 的清單
+     - 註冊資料存在頁面記憶體；另內建演示帳號 demo@example.com / demo1234
+     - 錯誤信封與真實後端同構（{error} → reject(new Error(error))）
+     ===================================================================== */
+  var MOCK_AUTH_USERS = [
+    { id: "mock-demo", login: "Demo", email: "demo@example.com", role: "user", password: "demo1234" }
+  ];
+  var MOCK_SESSION = { user: null };
+  function mockAuthApi(path, opts) {
+    if (location.search.indexOf("mock=auth") === -1) return null;
+    var method = (opts.method || "GET").toUpperCase();
+    function reject(error) { return Promise.reject(new Error(error)); }
+    function resolve(data) { return Promise.resolve(data); }
+
+    if (method === "GET" && path === "/api/me") return resolve({ user: MOCK_SESSION.user });
+    if (method === "GET" && path === "/api/auth/providers") {
+      return resolve({ providers: ["github", "google", "email"] });
+    }
+    if (method === "POST" && path === "/api/auth/logout") {
+      MOCK_SESSION.user = null;
+      return resolve({});
+    }
+    if (method === "GET" && path === "/api/feedback") return resolve({ items: [] });
+    if (method === "POST" && path === "/api/feedback") return resolve({ id: 1 });
+
+    var m = path.match(/^\/api\/auth\/(register|login)$/);
+    if (method === "POST" && m) {
+      var data = {};
+      try { data = JSON.parse(opts.body || "{}"); } catch (e) { return reject("expected json body"); }
+      var email = String(data.email || "").trim().toLowerCase();
+      var password = String(data.password || "");
+      var login = String(data.login || "").trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return reject("invalid email");
+      if (password.length < 8) return reject("password must be at least 8 characters");
+      var existing = null;
+      for (var i = 0; i < MOCK_AUTH_USERS.length; i++) {
+        if (MOCK_AUTH_USERS[i].email === email) { existing = MOCK_AUTH_USERS[i]; break; }
+      }
+      if (m[1] === "register") {
+        if (!login) return reject("login is required");
+        if (existing) return reject("email already registered");
+        var u = {
+          id: "mock-" + Date.now(),
+          login: login,
+          email: email,
+          role: "user",
+          password: password
+        };
+        MOCK_AUTH_USERS.push(u);
+        MOCK_SESSION.user = { id: u.id, login: u.login, email: u.email, role: u.role };
+        return resolve({ user: MOCK_SESSION.user });
+      }
+      if (!existing || existing.password !== password) return reject("invalid email or password");
+      MOCK_SESSION.user = {
+        id: existing.id,
+        login: existing.login,
+        email: existing.email,
+        role: existing.role
+      };
+      return resolve({ user: MOCK_SESSION.user });
+    }
+    // mock 模式下不讓任何 /api/ 請求漏到靜態伺服器（那會拿到 404 純文字，
+    // 主控台只會丟 JSON.parse 錯誤）；真有沒覆蓋的端點在這裡直接顯形。
+    if (path.indexOf("/api/") === 0) return reject("unmocked api in mock mode: " + method + " " + path);
+    return null;
+  }
 
   var account = { user: null };
   var mineBarTimer;
 
   function api(path, options) {
     var opts = options || {};
+    var mocked = mockAuthApi(path, opts); // 【臨時聯調 mock，聯調就緒後刪除本行】
+    if (mocked) return mocked;
     opts.credentials = "same-origin";
     return fetch(path, opts).then(function (res) {
       // 登出回 204，没有 body；用 text() 再自己解析，避免空 body 被当成错误。
@@ -2923,6 +3076,8 @@
   function fbSetOpen(open) {
     $("fb-modal").hidden = !open;
     setFbMsg("");
+    /* 彈窗開著時鎖住背後頁面的滾動，同 lightbox 的做法。 */
+    document.body.style.overflow = open ? "hidden" : "";
     if (!open) return;
 
     var signedIn = !!account.user;
@@ -3018,6 +3173,85 @@
     window.location.href = "/api/auth/login/" + encodeURIComponent(provider);
   }
 
+  /* ---------- Email 註冊/登入彈窗 ---------- */
+  var authMode = "login";
+
+  function authApplyMode() {
+    var register = authMode === "register";
+    $("auth-h").textContent = register ? "註冊帳號" : "登入帳號";
+    $("auth-name-field").hidden = !register;
+    $("auth-name").required = register;
+    $("auth-submit").textContent = register ? "註冊" : "登入";
+    $("auth-switch").textContent = register
+      ? "已有帳號？返回登入"
+      : "還沒有帳號？立即註冊";
+    // 告訴瀏覽器/密碼管理器這是新建密碼還是核對密碼，提示詞也不一樣。
+    $("auth-password").setAttribute(
+      "autocomplete",
+      register ? "new-password" : "current-password"
+    );
+  }
+
+  function authSetMsg(text) {
+    var el = $("auth-msg");
+    el.hidden = !text;
+    el.textContent = text || "";
+  }
+
+  function authSetOpen(open, mode) {
+    if (mode) authMode = mode;
+    $("auth-modal").hidden = !open;
+    if (!open) return;
+    $("auth-form").reset();
+    authSetMsg("");
+    authApplyMode();
+    setTimeout(function () { $("auth-email").focus(); }, 0);
+  }
+
+  function submitAuth(e) {
+    e.preventDefault();
+    var register = authMode === "register";
+    var payload = {
+      email: $("auth-email").value.trim(),
+      password: $("auth-password").value
+    };
+    if (register) payload.login = $("auth-name").value.trim();
+
+    // 前端先擋一輪明顯的格式問題，error key 與 Worker 回的一致。
+    if (register && !payload.login) {
+      authSetMsg(EA_ERRORS["login is required"]);
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
+      authSetMsg(EA_ERRORS["invalid email"]);
+      return;
+    }
+    if (payload.password.length < 8) {
+      authSetMsg(EA_ERRORS["password must be at least 8 characters"]);
+      return;
+    }
+
+    var btn = $("auth-submit");
+    btn.disabled = true;
+    authSetMsg("");
+    api("/api/auth/" + (register ? "register" : "login"), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    }).then(function (body) {
+      account.user = body.user;
+      syncAccountUi();
+      authSetOpen(false);
+      setAcctOpen(false);
+      // 可能是從回報彈窗的訪客視圖進來的：彈窗留在原處，把視圖切成已登入。
+      if (!$("fb-modal").hidden) fbSetOpen(true);
+    }).catch(function (err) {
+      authSetMsg(EA_ERRORS[err.message] || "操作失敗，請稍後再試。");
+    }).then(function () {
+      btn.disabled = false;
+    });
+  }
+
   // 这份 HTML 也可能被放在没有 Worker 的地方（例如留在 GitHub Pages 的备份），
   // 那时 /api/me 不会回 JSON。与其留一个按下去没反应的按钮，不如把帐号与回报
   // 入口整个藏起来，静态目录本身照常可用。
@@ -3044,8 +3278,22 @@
     document.addEventListener("click", function () { if (!pop.hidden) setAcctOpen(false); });
 
     document.querySelectorAll("[data-provider]").forEach(function (btn) {
-      btn.addEventListener("click", function () { signIn(btn.dataset.provider); });
+      btn.addEventListener("click", function () {
+        var p = btn.dataset.provider;
+        // email 不做整頁跳轉，開站內註冊/登入彈窗；其餘走 OAuth。
+        if (p === "email") { setAcctOpen(false); authSetOpen(true, "login"); return; }
+        signIn(p);
+      });
     });
+
+    $("auth-switch").addEventListener("click", function () {
+      authMode = authMode === "login" ? "register" : "login";
+      authSetMsg("");
+      authApplyMode();
+    });
+    $("auth-cancel").addEventListener("click", function () { authSetOpen(false); });
+    $("auth-backdrop").addEventListener("click", function () { authSetOpen(false); });
+    $("auth-form").addEventListener("submit", submitAuth);
 
     $("acct-mine").addEventListener("click", function () { setAcctOpen(false); fbSetOpen(true); });
     $("acct-signout").addEventListener("click", function () {
@@ -3070,9 +3318,19 @@
     $("fb-mine-list").addEventListener("scroll", flashMineBar, { passive: true });
     $("fb-dialog").addEventListener("scroll", flashDialogBar, { passive: true });
 
+    /* iOS Safari 不吃 body overflow:hidden 那一套，觸摸滑動還是會捲到背後的頁面。
+       所以在彈窗上攔 touchmove：手勢落在「真的裝不下、可以滾」的區塊（列表、
+       矮視口時的整窗）就放行讓它自己滾，其餘位置一律擋掉。 */
+    $("fb-modal").addEventListener("touchmove", function (e) {
+      var scroller = e.target.closest("#fb-mine-list, #fb-dialog");
+      if (scroller && scroller.scrollHeight > scroller.clientHeight) return;
+      e.preventDefault();
+    }, { passive: false });
+
     document.addEventListener("keydown", function (e) {
       if (e.key !== "Escape") return;
-      if (!$("fb-modal").hidden) fbSetOpen(false);
+      if (!$("auth-modal").hidden) authSetOpen(false);
+      else if (!$("fb-modal").hidden) fbSetOpen(false);
       else if (!pop.hidden) setAcctOpen(false);
     });
 
