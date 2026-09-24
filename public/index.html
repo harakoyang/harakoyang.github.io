@@ -696,7 +696,9 @@
   .acct-pop button[hidden] { display: none; }
   /* 右上角登入彈層的 provider 選項：左側 icon、文字左對齊、平時無邊框，
      hover 才浮出底色的菜單項樣式。 */
-  .provider-btn {
+  /* 特异性要盖过上面的 .acct-pop button（display:block），否则 flex 失效，
+     icon 会退回 inline 基线对齐而偏上。 */
+  .acct-pop .provider-btn {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -746,27 +748,62 @@
     z-index: 210;
     display: grid;
     place-items: center;
-    padding: 80px;
+    /* 彈窗與視口四邊的間距；彈窗高度 = 100vh 減去兩倍這個值，改這一處即可。
+       行動端在底部 media query 覆寫為 80px。 */
+    --fb-vm: 20px;
+    padding: var(--fb-vm);
   }
   #fb-modal[hidden] { display: none; }
   .fb-backdrop { position: absolute; inset: 0; background: rgba(2, 6, 18, 0.82); }
   .fb-dialog {
     position: relative;
+    display: flex;
+    flex-direction: column;
     width: min(520px, 100%);
-    max-height: calc(100vh - 160px);
+    height: calc(100vh - 2 * var(--fb-vm));
+    padding: 22px;
+    /* 平時內容都裝得下（列表會吸收多餘空間）；視口太矮裝不下時整窗才滾動。 */
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: 22px;
+    scrollbar-width: none;
     background: var(--panel-solid);
     border: 1px solid var(--line-strong);
     border-radius: 14px;
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
   }
+  .fb-dialog::-webkit-scrollbar { width: 0; height: 0; }
+  /* 整窗滾動指示條：sticky 貼在可視區右緣，平時透明不占版面，
+     滾動/拖曳時淡入、停手淡出（同 .fb-mine-bar 的做法）。 */
+  .fb-dialog-bar-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    align-self: flex-end;
+    flex: 0 0 0;
+    height: 0;
+    margin-right: -16px;
+  }
+  .fb-dialog-bar {
+    width: 4px;
+    border-radius: 999px;
+    background: var(--line-strong);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s;
+  }
+  .fb-dialog-bar-wrap.is-visible .fb-dialog-bar { opacity: 1; }
+  /* 訪客視圖只有一句登入提示和按鈕，撐滿高度會留下大塊空白，改回隨內容定高。 */
+  .fb-dialog:has(#fb-mine[hidden]) {
+    height: auto;
+    max-height: calc(100vh - 2 * var(--fb-vm));
+  }
   .fb-dialog h2 { margin: 0 0 6px; font-size: 18px; }
   .fb-dialog .section-note { margin-bottom: 18px; }
   .fb-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
   .fb-field label { font-size: 13px; color: var(--muted); }
-  .fb-dialog textarea { resize: vertical; min-height: 112px; line-height: 1.6; }
+  /* 輸入框隨內容自動長高（JS 依 scrollHeight 調整），超過上限後改為內部滾動。
+     +2px 是 border-box 下補上下各 1px 邊框，否則會差 2px 而冒出捲軸。 */
+  .fb-dialog textarea { resize: none; line-height: 1.6; max-height: 200px; overflow-y: auto; }
   .fb-count { margin: 0; font-size: 11.5px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
   .fb-actions { display: flex; justify-content: flex-end; gap: 8px; }
   #fb-guest .fb-actions { margin-top: 16px; }
@@ -775,14 +812,25 @@
   .fb-msg.is-ok { color: var(--ok); background: var(--ok-bg); }
   .fb-msg.is-bad { color: var(--bad); background: var(--bad-bg); }
 
-  .fb-mine { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+  /* 彈窗固定為「視口高 − 外距」，多餘空間由「我的回報」列表吸收變長；
+     空間不夠時也只有它收縮自滾。鏈上每層都要 min-height: 0。 */
+  .fb-mine {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
   .fb-mine[hidden] { display: none; }
   .fb-mine h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--muted); }
   .fb-mine h3 span { font-weight: 400; font-variant-numeric: tabular-nums; }
   /* 列表自己滾，讓上方的表單在翻舊紀錄時留在原地。這裡是全站唯一保留可見捲軸
      的地方 —— 紀錄是變高的文字塊，沒有捲軸就看不出下面還有多少。 */
   #fb-mine-list {
-    max-height: 260px;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
     /* 滾到頭尾後不要把滾動傳給頁面，否則翻完紀錄會順手把背後的目錄一起帶跑。 */
     overscroll-behavior: contain;
@@ -792,7 +840,13 @@
   /* 原生捲軸即使塗成透明也會占掉版面寬度，紀錄在「裝得下 / 裝不下」之間切換時
      文字會橫向跳動。改成自繪滑塊浮在列表右緣，完全不參與版面；捲動時淡入、
      停手後淡出，同 .lb-indicator 的做法。 */
-  .fb-mine-scroll { position: relative; }
+  .fb-mine-scroll {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
   .fb-mine-bar {
     position: absolute;
     top: 0;
@@ -1070,6 +1124,9 @@
     tbody tr:hover td { background: none; }
     tbody tr:hover td.mark-ok { background: var(--ok-bg); }
     tbody tr:hover td.mark-bad { background: var(--bad-bg); }
+
+    /* 行動端維持較大的外距，桌面端為 20px（見 #fb-modal 基底規則）。 */
+    #fb-modal { --fb-vm: 80px; }
   }
 </style>
 </head>
@@ -1336,7 +1393,8 @@
 
 <div id="fb-modal" hidden="">
   <div class="fb-backdrop" id="fb-backdrop"></div>
-  <div class="fb-dialog" role="dialog" aria-modal="true" aria-labelledby="fb-h">
+  <div class="fb-dialog" role="dialog" aria-modal="true" aria-labelledby="fb-h" id="fb-dialog">
+    <div class="fb-dialog-bar-wrap" id="fb-dialog-bar-wrap"><div class="fb-dialog-bar" id="fb-dialog-bar"></div></div>
     <h2 id="fb-h">回報資料問題</h2>
     <p class="section-note">表格中的內容若與你手上的資料來源不符，歡迎在此回報。</p>
 
@@ -2776,7 +2834,7 @@
      后端是同域的 Cloudflare Worker（/api/*），所以没有 CORS 要处理，session
      cookie 由浏览器自动带上，前端从头到尾不接触任何凭据。 */
   var FB_MAX = 2000;
-  var FB_STATUS = { "new": "待處理", triaged: "已確認", done: "已修正", wontfix: "不修改" };
+  var FB_STATUS = { "new": "待處理", triaged: "已確認", done: "已修正", wontfix: "已拒絕" };
   // Worker 回的 error 是给机器读的英文串。这里集中翻成给人看的提示，对不上的
   // （多半是没预期到的 5xx）退回通用文案，不要把原文直接丢到界面上。
   var FB_ERRORS = {
@@ -2833,6 +2891,35 @@
     $("fb-left").textContent = FB_MAX - $("fb-content").value.length;
   }
 
+  // 輸入框跟著內容長高：先歸 auto 讓它縮回兩行，再量 scrollHeight 設回去。
+  // 超過 CSS max-height 後高度被夾住，改由輸入框自己滾動。
+  function autosizeFbContent() {
+    var ta = $("fb-content");
+    ta.style.height = "auto";
+    ta.style.height = (ta.scrollHeight + 2) + "px";
+  }
+
+  // 整窗滾動指示條，邏輯同「我的回報」的滑塊：只在裝不下時出現，滾動時淡入。
+  var dlgBarTimer;
+  function syncDialogBar() {
+    var dlg = $("fb-dialog");
+    var bar = $("fb-dialog-bar");
+    var max = dlg.scrollHeight - dlg.clientHeight;
+    if (max <= 0) { bar.style.height = "0"; return; }
+    var h = Math.max(28, dlg.clientHeight * dlg.clientHeight / dlg.scrollHeight);
+    bar.style.height = h + "px";
+    bar.style.transform = "translateY(" + (dlg.scrollTop / max) * (dlg.clientHeight - h) + "px)";
+  }
+
+  function flashDialogBar() {
+    syncDialogBar();
+    $("fb-dialog-bar-wrap").classList.add("is-visible");
+    clearTimeout(dlgBarTimer);
+    dlgBarTimer = setTimeout(function () {
+      $("fb-dialog-bar-wrap").classList.remove("is-visible");
+    }, 700);
+  }
+
   function fbSetOpen(open) {
     $("fb-modal").hidden = !open;
     setFbMsg("");
@@ -2843,8 +2930,9 @@
     $("fb-form").hidden = !signedIn;
     $("fb-mine").hidden = !signedIn;
     if (!signedIn) return;
+    autosizeFbContent();
     $("fb-content").focus();
-    loadMyFeedback();
+    loadMyFeedback().then(syncDialogBar);
   }
 
   function fbDate(ms) {
@@ -2915,6 +3003,7 @@
       $("fb-target").value = "";
       $("fb-content").value = "";
       syncFbCount();
+      autosizeFbContent();
       setFbMsg("已送出，感謝回報。", "is-ok");
       return loadMyFeedback();
     }).catch(function (err) {
@@ -2973,9 +3062,13 @@
     $("fb-guest-cancel").addEventListener("click", function () { fbSetOpen(false); });
     $("fb-backdrop").addEventListener("click", function () { fbSetOpen(false); });
     $("fb-form").addEventListener("submit", submitFeedback);
-    $("fb-content").addEventListener("input", syncFbCount);
+    $("fb-content").addEventListener("input", function () {
+      syncFbCount();
+      autosizeFbContent();
+    });
 
     $("fb-mine-list").addEventListener("scroll", flashMineBar, { passive: true });
+    $("fb-dialog").addEventListener("scroll", flashDialogBar, { passive: true });
 
     document.addEventListener("keydown", function (e) {
       if (e.key !== "Escape") return;
