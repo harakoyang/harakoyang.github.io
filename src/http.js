@@ -1,7 +1,9 @@
 export class HttpError extends Error {
-  constructor(status, message) {
+  // details 會一併放進錯誤回應 JSON，例如 429 時帶 retry_after 給前端做倒計時。
+  constructor(status, message, details) {
     super(message);
     this.status = status;
+    this.details = details;
   }
 }
 
