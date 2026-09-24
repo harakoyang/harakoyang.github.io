@@ -30,8 +30,19 @@ async function route(request, env, url) {
   const path = url.pathname;
   const method = request.method;
 
-  if (method === "GET" && path === "/api/auth/login") return auth.login(request, env);
-  if (method === "GET" && path === "/api/auth/callback") return auth.callback(request, env, url);
+  // Legacy bare path 保持指向 github，兼容现有 OAuth App 注册的无后缀 callback URL
+  if (method === "GET" && path === "/api/auth/login") return auth.login(request, env, "github", { legacy: true });
+  if (method === "GET" && path === "/api/auth/callback") return auth.callback(request, env, url, "github");
+
+  // Provider-specific 路径：白名单正则避免路径穿越
+  const loginMatch = path.match(/^\/api\/auth\/login\/(github|google)$/);
+  if (method === "GET" && loginMatch) return auth.login(request, env, loginMatch[1]);
+
+  const callbackMatch = path.match(/^\/api\/auth\/callback\/(github|google)$/);
+  if (method === "GET" && callbackMatch) return auth.callback(request, env, url, callbackMatch[1]);
+
+  // 前端拉取已配置的 provider 列表，按需显示登录按钮
+  if (method === "GET" && path === "/api/auth/providers") return auth.providers(request, env);
   if (method === "POST" && path === "/api/auth/logout") return auth.logout(request, env);
   if (method === "GET" && path === "/api/me") return auth.me(request, env);
 
