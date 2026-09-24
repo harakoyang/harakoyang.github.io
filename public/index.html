@@ -751,7 +751,7 @@
     place-items: center;
     /* 彈窗與視口四邊的間距；彈窗「最大」高度 = 100vh 減去兩倍這個值，改這一處即可。
        桌面與行動端共用同一套規則。 */
-    --fb-vm: 20px;
+    --fb-vm: 40px;
     padding: var(--fb-vm);
   }
   #fb-modal[hidden] { display: none; }
@@ -799,8 +799,32 @@
   .fb-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
   .fb-field label { font-size: 13px; color: var(--muted); }
   /* 輸入框隨內容自動長高（JS 依 scrollHeight 調整），超過上限後改為內部滾動。
-     +2px 是 border-box 下補上下各 1px 邊框，否則會差 2px 而冒出捲軸。 */
-  .fb-dialog textarea { resize: none; line-height: 1.6; max-height: 200px; overflow-y: auto; }
+     +2px 是 border-box 下補上下各 1px 邊框，否則會差 2px 而冒出捲軸。
+     原生捲軸會占版面寬度，改用自繪滑塊（.fb-ta-bar），滾動時淡入、停手淡出。 */
+  .fb-ta-scroll { position: relative; }
+  .fb-dialog textarea {
+    width: 100%;
+    box-sizing: border-box;
+    resize: none;
+    line-height: 1.6;
+    max-height: 120px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+  }
+  .fb-dialog textarea::-webkit-scrollbar { width: 0; height: 0; }
+  .fb-ta-bar {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 4px;
+    border-radius: 999px;
+    background: var(--line-strong);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s;
+  }
+  .fb-ta-scroll.is-visible .fb-ta-bar { opacity: 1; }
   .fb-count { margin: 0; font-size: 11.5px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
   .fb-actions { display: flex; justify-content: flex-end; gap: 8px; }
   #fb-guest .fb-actions { margin-top: 16px; }
@@ -1470,7 +1494,10 @@
       </div>
       <div class="fb-field">
         <label for="fb-content">回報內容</label>
-        <textarea id="fb-content" maxlength="2000" required="" placeholder="請描述問題，若能附上建議的正確數值與資料來源會更好。"></textarea>
+        <div class="fb-ta-scroll" id="fb-ta-scroll">
+          <textarea id="fb-content" maxlength="2000" required="" placeholder="請描述問題，若能附上建議的正確數值與資料來源會更好。"></textarea>
+          <div class="fb-ta-bar" id="fb-ta-bar" aria-hidden="true"></div>
+        </div>
         <p class="fb-count"><span id="fb-left">2000</span> / 2000</p>
       </div>
       <div class="fb-actions">
@@ -2935,6 +2962,9 @@
     { id: "mock-demo", login: "Demo", email: "demo@example.com", role: "user", password: "demo1234" }
   ];
   var MOCK_SESSION = { user: null };
+  // 模擬回報限流：每小時 5 條，第 6 條回 429。倒數固定給 60 秒，純粹方便目驗，
+  // 真實後端給的是「視窗內最早一條滿一小時」的動態秒數（最長約 3600）。
+  var MOCK_FB_COUNT = 0;
   function mockAuthApi(path, opts) {
     if (location.search.indexOf("mock=auth") === -1) return null;
     var method = (opts.method || "GET").toUpperCase();
@@ -2950,7 +2980,15 @@
       return resolve({});
     }
     if (method === "GET" && path === "/api/feedback") return resolve({ items: [] });
-    if (method === "POST" && path === "/api/feedback") return resolve({ id: 1 });
+    if (method === "POST" && path === "/api/feedback") {
+      MOCK_FB_COUNT += 1;
+      if (MOCK_FB_COUNT > 5) {
+        var rateErr = new Error("too many submissions, try later");
+        rateErr.retryAfter = 60;
+        return Promise.reject(rateErr);
+      }
+      return resolve({ id: MOCK_FB_COUNT });
+    }
 
     var m = path.match(/^\/api\/auth\/(register|login)$/);
     if (method === "POST" && m) {
@@ -3006,7 +3044,12 @@
       // 登出回 204，没有 body；用 text() 再自己解析，避免空 body 被当成错误。
       return res.text().then(function (text) {
         var body = text ? JSON.parse(text) : {};
-        if (!res.ok) throw new Error(body.error || ("HTTP " + res.status));
+        if (!res.ok) {
+          var err = new Error(body.error || ("HTTP " + res.status));
+          // 429 限流時後端給剩餘秒數，前端用它做倒計時提示。
+          if (typeof body.retry_after === "number") err.retryAfter = body.retry_after;
+          throw err;
+        }
         return body;
       });
     });
@@ -3039,6 +3082,12 @@
     el.textContent = text || "";
     el.className = "fb-msg" + (tone ? " " + tone : "");
   }
+  // 限流提示只顯示觸發當下的瞬間值（後端給的真實剩餘秒數），不做每秒跳動：
+  // 向上取整到分鐘，最長一小時；文案固定不變，使用者重試時自然會拿到新值。
+  function fbRateLimitText(retryAfter) {
+    var mins = Math.min(60, Math.max(1, Math.ceil(retryAfter / 60)));
+    return "回報太頻繁了，請約 " + mins + " 分鐘後再試。";
+  }
 
   function syncFbCount() {
     $("fb-left").textContent = FB_MAX - $("fb-content").value.length;
@@ -3050,6 +3099,28 @@
     var ta = $("fb-content");
     ta.style.height = "auto";
     ta.style.height = (ta.scrollHeight + 2) + "px";
+    syncTaBar();
+  }
+
+  // 輸入框自繪滑塊，邏輯同「我的回報」：裝不下才有高度，滾動時淡入、停手淡出。
+  var taBarTimer;
+  function syncTaBar() {
+    var ta = $("fb-content");
+    var bar = $("fb-ta-bar");
+    var max = ta.scrollHeight - ta.clientHeight;
+    if (max <= 0) { bar.style.height = "0"; return; }
+    var h = Math.max(20, ta.clientHeight * ta.clientHeight / ta.scrollHeight);
+    bar.style.height = h + "px";
+    bar.style.transform = "translateY(" + (ta.scrollTop / max) * (ta.clientHeight - h) + "px)";
+  }
+
+  function flashTaBar() {
+    syncTaBar();
+    $("fb-ta-scroll").classList.add("is-visible");
+    clearTimeout(taBarTimer);
+    taBarTimer = setTimeout(function () {
+      $("fb-ta-scroll").classList.remove("is-visible");
+    }, 700);
   }
 
   // 整窗滾動指示條，邏輯同「我的回報」的滑塊：只在裝不下時出現，滾動時淡入。
@@ -3162,7 +3233,11 @@
       setFbMsg("已送出，感謝回報。", "is-ok");
       return loadMyFeedback();
     }).catch(function (err) {
-      setFbMsg(FB_ERRORS[err.message] || "送出失敗，請稍後再試。", "is-bad");
+      if (err.message === "too many submissions, try later" && err.retryAfter) {
+        setFbMsg(fbRateLimitText(err.retryAfter), "is-bad");
+      } else {
+        setFbMsg(FB_ERRORS[err.message] || "送出失敗，請稍後再試。", "is-bad");
+      }
     }).then(function () {
       submit.disabled = false;
     });
@@ -3314,15 +3389,16 @@
       syncFbCount();
       autosizeFbContent();
     });
+    $("fb-content").addEventListener("scroll", flashTaBar, { passive: true });
 
     $("fb-mine-list").addEventListener("scroll", flashMineBar, { passive: true });
     $("fb-dialog").addEventListener("scroll", flashDialogBar, { passive: true });
 
     /* iOS Safari 不吃 body overflow:hidden 那一套，觸摸滑動還是會捲到背後的頁面。
-       所以在彈窗上攔 touchmove：手勢落在「真的裝不下、可以滾」的區塊（列表、
-       矮視口時的整窗）就放行讓它自己滾，其餘位置一律擋掉。 */
+       所以在彈窗上攔 touchmove：手勢落在「真的裝不下、可以滾」的區塊（輸入框、
+       列表、矮視口時的整窗）就放行讓它自己滾，其餘位置一律擋掉。 */
     $("fb-modal").addEventListener("touchmove", function (e) {
-      var scroller = e.target.closest("#fb-mine-list, #fb-dialog");
+      var scroller = e.target.closest("#fb-content, #fb-mine-list, #fb-dialog");
       if (scroller && scroller.scrollHeight > scroller.clientHeight) return;
       e.preventDefault();
     }, { passive: false });
