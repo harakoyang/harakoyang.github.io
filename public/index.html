@@ -23,6 +23,31 @@
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
 
+  /* =========================================================================
+     彈窗 / 覆蓋層 z-index 階層表（新增彈窗時必須先對照本表）
+
+     分兩大類：
+       A. 小型下拉（popover）：不鎖背景滾動、點外部即關，只與同類互斥。
+          .ms-pop            z-index 30   月份 / 星等 / 視徑篩選下拉
+          .obs-time-pop      z-index 40   觀測時刻設定
+          .acct-pop          z-index 40   帳號下拉（登入/登出/我的回報）
+
+       B. 滿版彈窗（modal）：開啟時鎖背景滾動（syncBodyLock，body 設
+          position:fixed+top 補償，連鍵盤 PageDown/End 也擋得住），按
+          Esc 或點遮罩關閉。層級由低到高，上層可能從下層內開啟：
+          #lightbox          z-index 200  圖片大圖查看（從表格縮圖開）
+          #fb-modal          z-index 210  回報彈窗
+          #auth-modal        z-index 220  註冊 / 登入（可能從 acct-pop 或
+                                            fb-modal 訪客視圖疊上來，故最高）
+
+     規則：
+       1. 同類互斥：打開任一 .ms-pop 時關掉其他 .ms-pop / obs-time-pop。
+       2. 跨類不共存：滿版彈窗開著時，小型下拉的觸發鈕被遮罩擋住不會誤開。
+       3. auth-modal 固定為全局最高層，因為它可能從任意彈窗內被呼叫。
+       4. 新增滿版彈窗：z-index 須落在 200~220 之間並更新本表與
+          syncBodyLock 的鎖定條件；新增下拉：z-index 落在 30~40 之間。
+     ========================================================================= */
+
   /* Scrollbars stay hidden; scrolling itself is unaffected. */
   html, body, .ms-list { scrollbar-width: none; -ms-overflow-style: none; }
   html::-webkit-scrollbar,
@@ -52,17 +77,32 @@
     flex-direction: column;
     justify-content: flex-end;
     padding: clamp(24px, 6vw, 72px);
+    /* 背景由 .hero-slide 幻燈片提供；此處僅作為 JS 載入前的瞬間 fallback。 */
     background-image: url("assets/messier-table.jpg");
     background-size: cover;
     background-position: center top;
     overflow: hidden;
-    border-bottom: 1px solid var(--line);
   }
+
+  /* 兩層幻燈片交替淡入淡出：底層 z-index 0，覆蓋在 hero fallback 背景之上；
+     .hero::after 漸層(z1)、.hero-inner(z2)、.acct(z3) 依序壓在上層。 */
+  .hero-slide {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    opacity: 0;
+    transition: opacity 1.6s ease-in-out;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .hero-slide.is-active { opacity: 1; }
 
   .hero::after {
     content: "";
     position: absolute;
     inset: 0;
+    z-index: 1;
     background: linear-gradient(to bottom,
       rgba(4, 8, 26, 0.35) 0%, rgba(4, 8, 26, 0.15) 30%,
       rgba(4, 8, 26, 0.78) 72%, var(--bg) 100%);
@@ -70,7 +110,7 @@
 
   .hero-inner {
     position: relative;
-    z-index: 1;
+    z-index: 2;
     max-width: 1280px;
     width: 100%;
     margin: 0 auto;
@@ -670,7 +710,7 @@
   /* z-index clears .hero::after, the gradient that washes over the banner. */
   .acct {
     position: absolute;
-    z-index: 2;
+    z-index: 3;
     top: clamp(20px, 4vw, 32px);
     right: clamp(24px, 6vw, 72px);
   }
@@ -1160,10 +1200,14 @@
     padding: 20px;
   }
   #auth-modal[hidden] { display: none; }
-  .auth-backdrop { position: absolute; inset: 0; background: rgba(2, 6, 18, 0.82); }
+  /* touch-action: none 讓行動端從遮罩起手的滑動不會捲到背後的頁面。 */
+  .auth-backdrop { position: absolute; inset: 0; background: rgba(2, 6, 18, 0.82); touch-action: none; }
   .auth-dialog {
     position: relative;
     width: min(380px, 100%);
+    /* 矮視口（手機橫向等）裝不下時對話框自己縮成滾動區，而不是讓背後頁面捲。 */
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
     padding: 22px;
     background: var(--panel-solid);
     border: 1px solid var(--line-strong);
@@ -1197,6 +1241,8 @@
 <body>
 
 <header class="hero">
+  <div class="hero-slide" id="hero-slide-0" aria-hidden="true"></div>
+  <div class="hero-slide" id="hero-slide-1" aria-hidden="true"></div>
   <div class="acct" id="acct" hidden="">
     <button type="button" class="pill-btn" id="acct-btn" aria-haspopup="true" aria-expanded="false">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -1569,6 +1615,48 @@
     }
     return u;
   }
+
+  /* ---------- Hero 背景幻燈片 ----------
+     從 catalogue 中挑選知名深空天體，每張停留 10 秒，兩層交叉淡入淡出。
+     圖片路徑取自條目的 img.full（與目錄單一資料源同步），不存在的條目會被過濾。 */
+  (function startHeroSlideshow() {
+    var HERO_IS = [4, 7, 8, 52, 66, 68, 71, 72, 75, 80, 116, 133];
+    var slides = HERO_IS.map(function (i) {
+      var o = OBJECTS_BY_I[i];
+      if (!o || !o.img || !o.img.full) return null;
+      return { src: imgUrl(o.img.full), title: o.img.title || o.label || "" };
+    }).filter(Boolean);
+    if (slides.length < 2) return;
+
+    var l0 = document.getElementById("hero-slide-0");
+    var l1 = document.getElementById("hero-slide-1");
+    if (!l0 || !l1) return;
+    var layers = [l0, l1];
+
+    // 第一張：先載入再顯示，避免空白閃爍（hero 的 fallback 背景會短暫露出）。
+    var cur = 0;
+    var activeLayer = 0;
+    var first = new Image();
+    first.onload = function () {
+      layers[0].style.backgroundImage = 'url("' + slides[0].src + '")';
+      layers[0].classList.add("is-active");
+    };
+    first.src = slides[0].src;
+
+    function showNext() {
+      cur = (cur + 1) % slides.length;
+      var nextLayer = 1 - activeLayer;
+      var img = new Image();
+      img.onload = function () {
+        layers[nextLayer].style.backgroundImage = 'url("' + slides[cur].src + '")';
+        layers[nextLayer].classList.add("is-active");
+        layers[activeLayer].classList.remove("is-active");
+        activeLayer = nextLayer;
+      };
+      img.src = slides[cur].src;
+    }
+    setInterval(showNext, 10000);
+  })();
 
   // Defaults are the thresholds the source workbook used for its blue markers;
   // all three are editable so the page can be matched to other gear or sites.
@@ -2681,7 +2769,7 @@
     // page scrollbar without actually scrolling.
     lb.savedScrollY = window.scrollY;
     if ("scrollRestoration" in history) history.scrollRestoration = "manual";
-    document.body.style.overflow = "hidden";
+    syncBodyLock();
     lbResetView();
     // Push a history entry so the browser Back button closes the lightbox
     // instead of leaving the page.
@@ -2699,7 +2787,7 @@
     $("lightbox").hidden = true;
     $("lb-img").removeAttribute("src");
     $("lb-glass-img").removeAttribute("src");
-    document.body.style.overflow = "";
+    syncBodyLock();
     // Restore the exact scroll position we had before opening. The browser's
     // smooth scroll and popstate scroll restoration could otherwise move the
     // page; force an instant jump back to the saved offset.
@@ -3061,11 +3149,48 @@
     }, 700);
   }
 
+  /* 背景頁面滾動鎖（回報彈窗、註冊/登入彈窗共用）：
+     單純 body{overflow:hidden} 擋得住滾輪與觸摸（觸摸另在彈窗上攔 touchmove），
+     但擋不住鍵盤 PageDown / End 等按鍵把背後頁面捲走。改用 position:fixed 把
+     整頁釘在原地、以 top 負值補償鎖定當下的滾動距離，html 沒有可捲高度，任何
+     手段都捲不動；解鎖時瞬間歸位（避開 html 的 scroll-behavior:smooth）。
+     兩個彈窗可能疊放（訪客視圖點 email 登入），故以「任一開著即鎖、全關才解」
+     派生狀態，重複呼叫冪等。 */
+  var bodyLockY = 0;
+  function syncBodyLock() {
+    /* 鎖定條件：任一「滿版彈窗」開著就鎖。
+       目前滿版彈窗依 z-index 由低到高：lightbox(200) → fb-modal(210) → auth-modal(220)。
+       小型下拉（acct-pop / obs-time-pop / ms-pop）不算滿版彈窗，不鎖背景滾動。 */
+    var locked = !$("lightbox").hidden || !$("fb-modal").hidden || !$("auth-modal").hidden;
+    var bs = document.body.style;
+    if (locked && bs.position !== "fixed") {
+      bodyLockY = window.scrollY || document.documentElement.scrollTop || 0;
+      bs.position = "fixed";
+      bs.top = (-bodyLockY) + "px";
+      bs.left = "0";
+      bs.right = "0";
+      bs.overflow = "hidden";
+    } else if (!locked && bs.position === "fixed") {
+      bs.position = "";
+      bs.top = "";
+      bs.left = "";
+      bs.right = "";
+      bs.overflow = "";
+      if (bodyLockY) {
+        var htmlStyle = document.documentElement.style;
+        var prevBehavior = htmlStyle.scrollBehavior;
+        htmlStyle.scrollBehavior = "auto";
+        window.scrollTo(0, bodyLockY);
+        htmlStyle.scrollBehavior = prevBehavior;
+      }
+      bodyLockY = 0;
+    }
+  }
+
   function fbSetOpen(open) {
     $("fb-modal").hidden = !open;
     setFbMsg("");
-    /* 彈窗開著時鎖住背後頁面的滾動，同 lightbox 的做法。 */
-    document.body.style.overflow = open ? "hidden" : "";
+    syncBodyLock();
     if (!open) return;
 
     var signedIn = !!account.user;
@@ -3193,6 +3318,9 @@
   function authSetOpen(open, mode) {
     if (mode) authMode = mode;
     $("auth-modal").hidden = !open;
+    /* 滾動鎖由 syncBodyLock 按「回報/註冊彈窗任一開著」派生，auth 疊在回報
+       彈窗之上關閉時也不會誤解底層的鎖。 */
+    syncBodyLock();
     if (!open) return;
     $("auth-form").reset();
     authSetMsg("");
@@ -3317,6 +3445,14 @@
     $("fb-modal").addEventListener("touchmove", function (e) {
       var scroller = e.target.closest("#fb-content, #fb-mine-list, #fb-dialog");
       if (scroller && scroller.scrollHeight > scroller.clientHeight) return;
+      e.preventDefault();
+    }, { passive: false });
+
+    /* iOS Safari 不吃 body overflow:hidden，同回報彈窗在彈窗上攔 touchmove：
+       只有矮視口下對話框真的裝不下、可以自滾時才放行，其餘位置一律擋掉。 */
+    $("auth-modal").addEventListener("touchmove", function (e) {
+      var dlg = e.target.closest(".auth-dialog");
+      if (dlg && dlg.scrollHeight > dlg.clientHeight) return;
       e.preventDefault();
     }, { passive: false });
 
