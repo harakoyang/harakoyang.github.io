@@ -6,7 +6,7 @@ GITHUB_CLIENT_SECRET=
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 
-# 留空则周报只写 KV 快照并打日志，不发邮件。
+# 留空则周报只写 KV 快照并打日志，不发邮件；忘记密码功能会回 502（密码不会被改动）。
 RESEND_API_KEY=
 REVIEW_EMAIL_FROM=
 REVIEW_EMAIL_TO=
