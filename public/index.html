@@ -77,14 +77,13 @@
     flex-direction: column;
     justify-content: flex-end;
     padding: clamp(24px, 6vw, 72px);
-    /* 背景由 .hero-slide 幻燈片提供；此處僅作為 JS 載入前的瞬間 fallback。 */
-    background-image: url("assets/messier-table.jpg");
-    background-size: cover;
-    background-position: center top;
+    /* 背景完全由 .hero-slide 幻燈片提供；首張載入前露出的是 ::after 的深藍漸層，
+       不會白屏。曾用 assets/messier-table.jpg 當 fallback，但它同時是正文插圖，
+       當背景會讓每次進站都多下載一次，故移除。 */
     overflow: hidden;
   }
 
-  /* 兩層幻燈片交替淡入淡出：底層 z-index 0，覆蓋在 hero fallback 背景之上；
+  /* 兩層幻燈片交替淡入淡出：底層 z-index 0；首張載入前只看得到 ::after 漸層。
      .hero::after 漸層(z1)、.hero-inner(z2)、.acct(z3) 依序壓在上層。 */
   .hero-slide {
     position: absolute;
@@ -1658,7 +1657,7 @@
     if (!l0 || !l1) return;
     var layers = [l0, l1];
 
-    // 第一張：先載入再顯示，避免空白閃爍（hero 的 fallback 背景會短暫露出）。
+    // 第一張：先載入再顯示，避免空白閃爍（載入前頂部是 ::after 的深藍漸層）。
     var cur = 0;
     var activeLayer = 0;
     var first = new Image();
