@@ -518,6 +518,49 @@ export async function resetPassword(request, env) {
 }
 
 // ---------------------------------------------------------------------------
+// 修改密碼：登入態主動改密，必須驗原密碼。OAuth 帳號沒有站內密碼，直接拒絕。
+// ---------------------------------------------------------------------------
+
+export async function changePassword(request, env) {
+  const user = await requireUser(request, env);
+  if (user.provider !== "email") {
+    throw new HttpError(400, "password login not available for this account");
+  }
+
+  const body = await request.json().catch(() => null);
+  if (!body) throw new HttpError(400, "expected json body");
+  const oldPassword = typeof body.oldPassword === "string" ? body.oldPassword : "";
+  const newPassword = typeof body.newPassword === "string" ? body.newPassword : "";
+
+  if (newPassword.length < PASSWORD_MIN) {
+    throw new HttpError(400, `password must be at least ${PASSWORD_MIN} characters`);
+  }
+  if (newPassword.length > PASSWORD_MAX) {
+    throw new HttpError(400, `password must be at most ${PASSWORD_MAX} characters`);
+  }
+  if (newPassword === oldPassword) {
+    throw new HttpError(400, "new password must be different");
+  }
+
+  // PBKDF2 一輪 10 萬次迭代很吃 CPU，限流必須排在驗密碼前面。
+  await rlGuard(env, `chpw:${user.id}`, 10);
+
+  const row = await env.DB.prepare("SELECT password_hash FROM users WHERE id = ?")
+    .bind(user.id)
+    .first();
+  if (!row || !(await verifyPassword(oldPassword, row.password_hash))) {
+    throw new HttpError(401, "current password is incorrect");
+  }
+
+  // 與重設路徑同一套 hashPassword，保證登入驗證契約一致。
+  await env.DB.prepare("UPDATE users SET password_hash = ? WHERE id = ?")
+    .bind(await hashPassword(newPassword), user.id)
+    .run();
+
+  return json({ ok: true });
+}
+
+// ---------------------------------------------------------------------------
 // Session 管理（provider 无关，不改动）
 // ---------------------------------------------------------------------------
 
@@ -532,7 +575,7 @@ async function issueSession(env, userId) {
 }
 
 async function userById(env, id) {
-  return env.DB.prepare("SELECT id, login, email, avatar_url, role FROM users WHERE id = ?")
+  return env.DB.prepare("SELECT id, provider, login, email, avatar_url, role FROM users WHERE id = ?")
     .bind(id)
     .first();
 }
@@ -553,7 +596,7 @@ export async function currentUser(request, env) {
   const raw = await env.SESSIONS.get(`sess:${sid}`, "json");
   if (!raw) return null;
 
-  return env.DB.prepare("SELECT id, login, email, avatar_url, role FROM users WHERE id = ?")
+  return env.DB.prepare("SELECT id, provider, login, email, avatar_url, role FROM users WHERE id = ?")
     .bind(raw.uid)
     .first();
 }
