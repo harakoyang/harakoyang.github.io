@@ -1,5 +1,6 @@
 import { json } from "./http.js";
 import { requireAdmin } from "./auth.js";
+import { sendEmail } from "./mail.js";
 
 const SNAPSHOT_KEY = "review:latest";
 
@@ -36,7 +37,7 @@ export async function runWeeklyReview(env) {
 }
 
 async function sendDigest(env, snapshot) {
-  if (!env.RESEND_API_KEY || !env.REVIEW_EMAIL_TO || !env.REVIEW_EMAIL_FROM) {
+  if (!env.REVIEW_EMAIL_TO) {
     console.log(`weekly review: ${snapshot.newInWindow} new, ${snapshot.pendingTotal} pending`);
     return;
   }
@@ -49,22 +50,12 @@ async function sendDigest(env, snapshot) {
     )
     .join("");
 
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${env.RESEND_API_KEY}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      from: env.REVIEW_EMAIL_FROM,
-      to: env.REVIEW_EMAIL_TO,
-      subject: `观测站反馈周报：${snapshot.newInWindow} 条新增 / ${snapshot.pendingTotal} 条待处理`,
-      html: `<table border="1" cellpadding="6"><tr><th>用户</th><th>目标</th><th>内容</th></tr>${rows}</table>`,
-    }),
+  const ok = await sendEmail(env, {
+    to: env.REVIEW_EMAIL_TO,
+    subject: `观测站反馈周报：${snapshot.newInWindow} 条新增 / ${snapshot.pendingTotal} 条待处理`,
+    html: `<table border="1" cellpadding="6"><tr><th>用户</th><th>目标</th><th>内容</th></tr>${rows}</table>`,
   });
-
-  // cron 失败只会进 Past Events 列表，没人盯着，所以把状态码打进日志。
-  if (!res.ok) console.error(`resend failed: ${res.status} ${await res.text()}`);
+  if (!ok) console.error("weekly review: sendEmail failed");
 }
 
 export async function latestSnapshot(request, env) {
