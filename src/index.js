@@ -52,6 +52,8 @@ async function route(request, env, url) {
   // 這兩條只收 POST，方法不同互不衝突。
   if (method === "POST" && path === "/api/auth/register") return auth.register(request, env);
   if (method === "POST" && path === "/api/auth/login") return auth.passwordLogin(request, env);
+  if (method === "POST" && path === "/api/auth/reset-password") return auth.resetPassword(request, env);
+  if (method === "POST" && path === "/api/auth/change-password") return auth.changePassword(request, env);
 
   // 前端拉取已配置的 provider 列表，按需显示登录按钮
   if (method === "GET" && path === "/api/auth/providers") return auth.providers(request, env);
