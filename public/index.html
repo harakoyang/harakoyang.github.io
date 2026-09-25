@@ -77,14 +77,13 @@
     flex-direction: column;
     justify-content: flex-end;
     padding: clamp(24px, 6vw, 72px);
-    /* 背景由 .hero-slide 幻燈片提供；此處僅作為 JS 載入前的瞬間 fallback。 */
-    background-image: url("assets/messier-table.jpg");
-    background-size: cover;
-    background-position: center top;
+    /* 背景完全由 .hero-slide 幻燈片提供；首張載入前露出的是 ::after 的深藍漸層，
+       不會白屏。曾用 assets/messier-table.jpg 當 fallback，但它同時是正文插圖，
+       當背景會讓每次進站都多下載一次，故移除。 */
     overflow: hidden;
   }
 
-  /* 兩層幻燈片交替淡入淡出：底層 z-index 0，覆蓋在 hero fallback 背景之上；
+  /* 兩層幻燈片交替淡入淡出：底層 z-index 0；首張載入前只看得到 ::after 漸層。
      .hero::after 漸層(z1)、.hero-inner(z2)、.acct(z3) 依序壓在上層。 */
   .hero-slide {
     position: absolute;
@@ -1222,7 +1221,24 @@
   .auth-msg { margin: 0 0 12px; padding: 8px 11px; font-size: 13px; border-radius: 9px; }
   .auth-msg[hidden] { display: none; }
   .auth-msg.is-bad { color: var(--bad); background: var(--bad-bg); }
-  .auth-actions { display: flex; justify-content: flex-end; gap: 8px; }
+  .auth-msg.is-ok { color: var(--ok); background: var(--ok-bg); }
+  .auth-hint { margin: 0 0 12px; font-size: 12.5px; color: var(--muted); }
+  .auth-hint[hidden] { display: none; }
+  .auth-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
+  /* 忘記密碼連結壓在動作列左側，與右邊的取消/登入鈕同一行。 */
+  .auth-forgot {
+    margin-right: auto;
+    padding: 4px 6px;
+    font: inherit;
+    font-size: 12.5px;
+    color: var(--muted);
+    background: none;
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+  }
+  .auth-forgot[hidden] { display: none; }
+  @media (hover: hover) { .auth-forgot:hover { color: var(--text); } }
   .auth-switch {
     display: block;
     margin: 12px auto 0;
@@ -1236,6 +1252,7 @@
     cursor: pointer;
   }
   @media (hover: hover) { .auth-switch:hover { color: var(--text); } }
+  .auth-switch[hidden] { display: none; }
 </style>
 </head>
 <body>
@@ -1268,6 +1285,7 @@
         </button>
       </div>
       <button type="button" id="acct-mine" hidden="">我的回報</button>
+      <button type="button" id="acct-change-pw" hidden="">修改密碼</button>
       <button type="button" id="acct-signout" hidden="">登出</button>
     </div>
   </div>
@@ -1570,16 +1588,22 @@
       <label for="auth-name">顯示名稱</label>
       <input type="text" id="auth-name" maxlength="40" autocomplete="username" placeholder="怎麼稱呼你">
     </div>
-    <div class="auth-field">
+    <div class="auth-field" id="auth-email-field">
       <label for="auth-email">電子郵件</label>
       <input type="email" id="auth-email" maxlength="254" autocomplete="email" inputmode="email" placeholder="you@example.com">
     </div>
-    <div class="auth-field">
-      <label for="auth-password">密碼</label>
+    <div class="auth-field" id="auth-password-field">
+      <label for="auth-password" id="auth-password-label">密碼</label>
       <input type="password" id="auth-password" minlength="8" maxlength="128" autocomplete="current-password" placeholder="至少 8 個字元">
     </div>
+    <div class="auth-field" id="auth-newpassword-field" hidden="">
+      <label for="auth-newpassword">新密碼</label>
+      <input type="password" id="auth-newpassword" minlength="8" maxlength="128" autocomplete="new-password" placeholder="至少 8 個字元">
+    </div>
+    <p class="auth-hint" id="auth-hint" hidden="">輸入註冊時的電子郵件，系統會把新密碼寄到該信箱。</p>
     <p class="auth-msg" id="auth-msg" hidden=""></p>
     <div class="auth-actions">
+      <button type="button" class="auth-forgot" id="auth-forgot">忘記密碼？</button>
       <button type="button" class="chip" id="auth-cancel">取消</button>
       <button type="submit" class="chip is-primary" id="auth-submit">登入</button>
     </div>
@@ -1633,7 +1657,7 @@
     if (!l0 || !l1) return;
     var layers = [l0, l1];
 
-    // 第一張：先載入再顯示，避免空白閃爍（hero 的 fallback 背景會短暫露出）。
+    // 第一張：先載入再顯示，避免空白閃爍（載入前頂部是 ::after 的深藍漸層）。
     var cur = 0;
     var activeLayer = 0;
     var first = new Image();
@@ -3036,7 +3060,11 @@
     "invalid email": "電子郵件格式不正確。",
     "password must be at least 8 characters": "密碼至少要 8 個字元。",
     "email already registered": "此電子郵件已註冊，請直接登入。",
-    "invalid email or password": "電子郵件或密碼錯誤。"
+    "invalid email or password": "電子郵件或密碼錯誤。",
+    "email send failed, try later": "信件寄送失敗，請稍後再試。",
+    "current password is incorrect": "原密碼不正確。",
+    "new password must be different": "新密碼不能與原密碼相同。",
+    "password login not available for this account": "此帳號使用第三方登入，沒有站內密碼。"
   };
 
   var account = { user: null };
@@ -3078,6 +3106,8 @@
       btn.hidden = !!user || !availableProviders.includes(p);
     });
     $("acct-mine").hidden = !user;
+    // 只有站內 email 帳號有密碼可改；GitHub / Google 帳號走第三方，不顯示入口。
+    $("acct-change-pw").hidden = !(user && user.provider === "email");
     $("acct-signout").hidden = !user;
   }
 
@@ -3290,18 +3320,40 @@
     window.location.href = "/api/auth/login/" + encodeURIComponent(provider);
   }
 
-  /* ---------- Email 註冊/登入彈窗 ---------- */
-  var authMode = "login";
+  /* ---------- Email 註冊/登入彈窗（含忘記密碼、修改密碼） ---------- */
+  var authMode = "login"; // login | register | reset | change
 
   function authApplyMode() {
     var register = authMode === "register";
-    $("auth-h").textContent = register ? "註冊帳號" : "登入帳號";
+    var reset = authMode === "reset";
+    var change = authMode === "change";
+    $("auth-h").textContent =
+      register ? "註冊帳號" : reset ? "重設密碼" : change ? "修改密碼" : "登入帳號";
     $("auth-name-field").hidden = !register;
     $("auth-name").required = register;
-    $("auth-submit").textContent = register ? "註冊" : "登入";
-    $("auth-switch").textContent = register
-      ? "已有帳號？返回登入"
-      : "還沒有帳號？立即註冊";
+    $("auth-email-field").hidden = change;
+    $("auth-email").required = !change;
+    $("auth-password-field").hidden = reset;
+    $("auth-password").required = !reset;
+    $("auth-newpassword-field").hidden = !change;
+    $("auth-newpassword").required = change;
+    $("auth-password-label").textContent = change ? "原密碼" : "密碼";
+    // 重設模式下密碼欄位藏起來但仍參與 HTML5 校驗：登入模式打了一半的
+    // 短密碼會觸發 minlength 擋下表單，進重設模式時直接清空。
+    if (reset) $("auth-password").value = "";
+    $("auth-hint").hidden = !reset;
+    $("auth-forgot").hidden = authMode !== "login";
+    // 修改密碼是登入態操作，沒有「切去註冊/登入」的需求，切換連結整個藏掉。
+    $("auth-switch").hidden = change;
+    $("auth-submit").textContent =
+      register ? "註冊" : reset ? "寄送新密碼" : change ? "確認修改" : "登入";
+    if (!change) {
+      $("auth-switch").textContent = register
+        ? "已有帳號？返回登入"
+        : reset
+          ? "想起密碼了？返回登入"
+          : "還沒有帳號？立即註冊";
+    }
     // 告訴瀏覽器/密碼管理器這是新建密碼還是核對密碼，提示詞也不一樣。
     $("auth-password").setAttribute(
       "autocomplete",
@@ -3309,10 +3361,17 @@
     );
   }
 
-  function authSetMsg(text) {
+  function authSetMsg(text, tone) {
     var el = $("auth-msg");
     el.hidden = !text;
     el.textContent = text || "";
+    el.className = "auth-msg" + (tone ? " " + tone : "");
+  }
+
+  // 與回報彈窗同一原則：只顯示觸發當下的剩餘分鐘數，不做倒計時跳動。
+  function authRateLimitText(retryAfter) {
+    var mins = Math.min(60, Math.max(1, Math.ceil(retryAfter / 60)));
+    return "操作太頻繁了，請約 " + mins + " 分鐘後再試。";
   }
 
   function authSetOpen(open, mode) {
@@ -3325,40 +3384,69 @@
     $("auth-form").reset();
     authSetMsg("");
     authApplyMode();
-    setTimeout(function () { $("auth-email").focus(); }, 0);
+    setTimeout(function () {
+      // 修改密碼時沒有信箱欄位，直接聚焦原密碼；其餘模式聚焦電子郵件。
+      $(authMode === "change" ? "auth-password" : "auth-email").focus();
+    }, 0);
   }
 
   function submitAuth(e) {
     e.preventDefault();
     var register = authMode === "register";
+    var reset = authMode === "reset";
+    var change = authMode === "change";
     var payload = {
       email: $("auth-email").value.trim(),
       password: $("auth-password").value
     };
     if (register) payload.login = $("auth-name").value.trim();
+    if (change) {
+      payload.oldPassword = $("auth-password").value;
+      payload.newPassword = $("auth-newpassword").value;
+    }
 
     // 前端先擋一輪明顯的格式問題，error key 與 Worker 回的一致。
     if (register && !payload.login) {
-      authSetMsg(EA_ERRORS["login is required"]);
+      authSetMsg(EA_ERRORS["login is required"], "is-bad");
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
-      authSetMsg(EA_ERRORS["invalid email"]);
+    if (!change && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
+      authSetMsg(EA_ERRORS["invalid email"], "is-bad");
       return;
     }
-    if (payload.password.length < 8) {
-      authSetMsg(EA_ERRORS["password must be at least 8 characters"]);
+    var pwToCheck = change ? payload.newPassword : payload.password;
+    if (!reset && pwToCheck.length < 8) {
+      authSetMsg(EA_ERRORS["password must be at least 8 characters"], "is-bad");
       return;
     }
 
     var btn = $("auth-submit");
     btn.disabled = true;
     authSetMsg("");
-    api("/api/auth/" + (register ? "register" : "login"), {
+
+    var url = register
+      ? "/api/auth/register"
+      : reset
+        ? "/api/auth/reset-password"
+        : change
+          ? "/api/auth/change-password"
+          : "/api/auth/login";
+    api(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload)
     }).then(function (body) {
+      if (reset) {
+        authSetMsg("已寄出新密碼，請到信箱查看。", "is-ok");
+        $("auth-email").value = "";
+        return;
+      }
+      if (change) {
+        authSetMsg("密碼已修改，下次請用新密碼登入。", "is-ok");
+        $("auth-password").value = "";
+        $("auth-newpassword").value = "";
+        return;
+      }
       account.user = body.user;
       syncAccountUi();
       authSetOpen(false);
@@ -3366,7 +3454,11 @@
       // 可能是從回報彈窗的訪客視圖進來的：彈窗留在原處，把視圖切成已登入。
       if (!$("fb-modal").hidden) fbSetOpen(true);
     }).catch(function (err) {
-      authSetMsg(EA_ERRORS[err.message] || "操作失敗，請稍後再試。");
+      if (err.message === "too many requests, try later" && err.retryAfter) {
+        authSetMsg(authRateLimitText(err.retryAfter), "is-bad");
+      } else {
+        authSetMsg(EA_ERRORS[err.message] || "操作失敗，請稍後再試。", "is-bad");
+      }
     }).then(function () {
       btn.disabled = false;
     });
@@ -3411,11 +3503,21 @@
       authSetMsg("");
       authApplyMode();
     });
+    $("auth-forgot").addEventListener("click", function () {
+      authMode = "reset";
+      authSetMsg("");
+      authApplyMode();
+      setTimeout(function () { $("auth-email").focus(); }, 0);
+    });
     $("auth-cancel").addEventListener("click", function () { authSetOpen(false); });
     $("auth-backdrop").addEventListener("click", function () { authSetOpen(false); });
     $("auth-form").addEventListener("submit", submitAuth);
 
     $("acct-mine").addEventListener("click", function () { setAcctOpen(false); fbSetOpen(true); });
+    $("acct-change-pw").addEventListener("click", function () {
+      setAcctOpen(false);
+      authSetOpen(true, "change");
+    });
     $("acct-signout").addEventListener("click", function () {
       api("/api/auth/logout", { method: "POST" }).then(function () {
         account.user = null;
