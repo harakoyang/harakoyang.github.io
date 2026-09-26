@@ -37,6 +37,8 @@
           Esc 或點遮罩關閉。層級由低到高，上層可能從下層內開啟：
           #lightbox          z-index 200  圖片大圖查看（從表格縮圖開）
           #fb-modal          z-index 210  回報彈窗
+          #fb-del-modal      z-index 215  移除回報確認（只從 fb-modal 的
+                                          我的回報列表內開啟，不與其他彈窗疊）
           #auth-modal        z-index 220  註冊 / 登入（可能從 acct-pop 或
                                             fb-modal 訪客視圖疊上來，故最高）
 
@@ -772,6 +774,8 @@
   }
 
   .chip.is-primary { color: #06102a; background: var(--text); border-color: var(--text); font-weight: 600; }
+  /* 破壞性操作的確認鈕：與主按鈕同形，但以危險色示警。 */
+  .chip.is-danger { color: #fff; background: var(--bad); border-color: var(--bad); font-weight: 600; }
   .chip:disabled { opacity: 0.45; cursor: default; }
 
   #fb-modal {
@@ -805,6 +809,31 @@
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
   }
   .fb-dialog::-webkit-scrollbar { width: 0; height: 0; }
+
+  /* 移除確認小彈窗：只從「我的回報」列表內開啟，疊在 fb-modal 之上（z 215，
+     見頂部階層表）。卡片比照彈窗規範：遮罩鎖背景、Esc／點遮罩關閉。 */
+  #fb-del-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 215;
+    display: grid;
+    place-items: center;
+    --fb-vm: 40px;
+    padding: var(--fb-vm);
+  }
+  #fb-del-modal[hidden] { display: none; }
+  .fb-del-dialog {
+    position: relative;
+    width: min(360px, 100%);
+    padding: 22px;
+    background: var(--panel-solid);
+    border: 1px solid var(--line-strong);
+    border-radius: 14px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  }
+  .fb-del-dialog h2 { margin: 0 0 8px; font-size: 16px; }
+  .fb-del-text { margin: 0 0 16px; font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .fb-del-dialog .fb-actions { margin-top: 0; }
   /* 整窗滾動指示條：sticky 貼在可視區右緣，平時透明不占版面，
      滾動/拖曳時淡入、停手淡出（同 .fb-mine-bar 的做法）。 */
   .fb-dialog-bar-wrap {
@@ -923,8 +952,18 @@
     transition: opacity .25s;
   }
   .fb-mine-scroll.is-visible .fb-mine-bar { opacity: 1; }
-  .fb-item { padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  /* 條目是 flex 行：左側（日期行＋內容）佔滿，狀態 tag 固定右緣並在
+     「整條高度（上下兩條分割線之間）」垂直居中，而非只對齊第一行。 */
+  .fb-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+  }
   .fb-item:last-child { border-bottom: none; }
+  .fb-item-main { flex: 1 1 auto; min-width: 0; }
   .fb-item-head {
     display: flex;
     align-items: center;
@@ -935,7 +974,26 @@
     font-variant-numeric: tabular-nums;
   }
   .fb-item-head b { color: var(--text); font-size: 12.5px; }
-  .fb-status { margin-left: auto; padding: 1px 8px; border: 1px solid var(--line); border-radius: 999px; }
+  /* 移除入口與狀態 tag 同層（條目 flex 行的最右），尺寸比照 tag 的膠囊
+     （同內距/邊框寬/圓角/字號）但整體危險紅示警，hover 條目時在 tag 原位
+     現身、tag 讓位，右緣對齊不跳位；觸控裝置沒有 hover，移除鈕平時就顯示。 */
+  .fb-item-del {
+    flex: 0 0 auto;
+    padding: 1px 8px;
+    border: 1px solid var(--bad);
+    border-radius: 999px;
+    background: none;
+    font: inherit;
+    color: var(--bad);
+    cursor: pointer;
+  }
+  @media (hover: hover) {
+    .fb-item .fb-item-del { display: none; }
+    .fb-item:hover .fb-status { display: none; }
+    .fb-item:hover .fb-item-del { display: block; }
+  }
+  .fb-item-del[disabled] { opacity: 0.45; cursor: default; }
+  .fb-status { flex: 0 0 auto; padding: 1px 8px; border: 1px solid var(--line); border-radius: 999px; }
   .fb-status[data-s="done"] { color: var(--ok); border-color: var(--ok); }
   .fb-status[data-s="wontfix"] { color: var(--bad); border-color: var(--bad); }
   /* 空狀態文案補上與 .fb-item 一致的 9px 內距，避免貼著分隔線。 */
@@ -1580,6 +1638,18 @@
         <button type="button" class="chip is-primary" id="fb-mine-report">回報資料問題</button>
         <button type="button" class="chip" id="fb-mine-close">關閉</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div id="fb-del-modal" hidden="">
+  <div class="fb-backdrop" id="fb-del-backdrop"></div>
+  <div class="fb-del-dialog" role="dialog" aria-modal="true" aria-labelledby="fb-del-title">
+    <h2 id="fb-del-title">移除回報</h2>
+    <p class="fb-del-text">確定要移除這則回報嗎？移除後無法復原。</p>
+    <div class="fb-actions">
+      <button type="button" class="chip" id="fb-del-cancel">取消</button>
+      <button type="button" class="chip is-danger" id="fb-del-confirm">移除</button>
     </div>
   </div>
 </div>
@@ -3201,9 +3271,11 @@
   var bodyLockY = 0;
   function syncBodyLock() {
     /* 鎖定條件：任一「滿版彈窗」開著就鎖。
-       目前滿版彈窗依 z-index 由低到高：lightbox(200) → fb-modal(210) → auth-modal(220)。
+       目前滿版彈窗依 z-index 由低到高：lightbox(200) → fb-modal(210) →
+       fb-del-modal(215) → auth-modal(220)。
        小型下拉（acct-pop / obs-time-pop / ms-pop）不算滿版彈窗，不鎖背景滾動。 */
-    var locked = !$("lightbox").hidden || !$("fb-modal").hidden || !$("auth-modal").hidden;
+    var locked = !$("lightbox").hidden || !$("fb-modal").hidden ||
+                 !$("fb-del-modal").hidden || !$("auth-modal").hidden;
     var bs = document.body.style;
     if (locked && bs.position !== "fixed") {
       bodyLockY = window.scrollY || document.documentElement.scrollTop || 0;
@@ -3266,12 +3338,16 @@
   }
 
   function fbItemHtml(item) {
-    return '<div class="fb-item"><div class="fb-item-head">' +
+    return '<div class="fb-item"><div class="fb-item-main">' +
+      '<div class="fb-item-head">' +
       (item.target ? "<b>" + esc(item.target) + "</b>" : "") +
       "<span>" + fbDate(item.created_at) + "</span>" +
+      '</div><div>' +
+      esc(item.content) +
+      '</div></div>' +
       '<span class="fb-status" data-s="' + esc(item.status) + '">' +
-      esc(FB_STATUS[item.status] || item.status) + "</span></div><div>" +
-      esc(item.content) + "</div></div>";
+      esc(FB_STATUS[item.status] || item.status) + "</span>" +
+      '<button type="button" class="fb-item-del" data-id="' + esc(item.id) + '">移除</button></div>';
   }
 
   // 滑塊高度取「可視高度占總高度的比例」，但給個下限，否則紀錄一多滑塊會細到
@@ -3563,7 +3639,44 @@
     });
     $("fb-content").addEventListener("scroll", flashTaBar, { passive: true });
 
-    $("fb-mine-list").addEventListener("scroll", flashMineBar, { passive: true });
+    // 移除走確認彈窗（#fb-del-modal，z 215）：點條目上的「移除」先開彈窗，
+    // 彈窗內「移除」才真正送 DELETE。列表以事件代理處理，重渲染免重綁。
+    var fbDelId = 0;
+    function fbDelSetOpen(open) {
+      $("fb-del-modal").hidden = !open;
+      syncBodyLock();
+      if (open) return;
+      fbDelId = 0;
+      $("fb-del-confirm").disabled = false;
+    }
+
+    $("fb-mine-list").addEventListener("click", function (e) {
+      var btn = e.target.closest(".fb-item-del");
+      if (!btn || btn.disabled) return;
+      fbDelId = Number(btn.dataset.id);
+      fbDelSetOpen(true);
+    });
+
+    $("fb-del-backdrop").addEventListener("click", function () { fbDelSetOpen(false); });
+    $("fb-del-cancel").addEventListener("click", function () { fbDelSetOpen(false); });
+    $("fb-del-confirm").addEventListener("click", function () {
+      if (!fbDelId) return;
+      $("fb-del-confirm").disabled = true;
+      var id = fbDelId;
+      api("/api/feedback/" + id, { method: "DELETE" })
+        .catch(function (err) {
+          // 已不存在（重複刪）視同成功；其餘錯誤提示在底下的回報彈窗內。
+          if (err.message !== "feedback not found") {
+            setFbMsg(FB_ERRORS[err.message] || "移除失敗，請稍後再試。", "is-bad");
+          }
+        })
+        .then(function () { fbDelSetOpen(false); return loadMyFeedback(); });
+    });
+
+    /* iOS Safari 不吃 body overflow:hidden，小彈窗比照回報彈窗攔 touchmove。 */
+    $("fb-del-modal").addEventListener("touchmove", function (e) { e.preventDefault(); }, { passive: false });
+
+  $("fb-mine-list").addEventListener("scroll", flashMineBar, { passive: true });
     $("fb-dialog").addEventListener("scroll", flashDialogBar, { passive: true });
 
     /* iOS Safari 不吃 body overflow:hidden 那一套，觸摸滑動還是會捲到背後的頁面。
@@ -3586,6 +3699,7 @@
     document.addEventListener("keydown", function (e) {
       if (e.key !== "Escape") return;
       if (!$("auth-modal").hidden) authSetOpen(false);
+      else if (!$("fb-del-modal").hidden) fbDelSetOpen(false);
       else if (!$("fb-modal").hidden) fbSetOpen(false);
       else if (!pop.hidden) setAcctOpen(false);
     });
