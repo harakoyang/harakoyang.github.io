@@ -30,7 +30,7 @@
        A. 小型下拉（popover）：不鎖背景滾動、點外部即關，只與同類互斥。
           .ms-pop            z-index 30   月份 / 星等 / 視徑篩選下拉
           .obs-time-pop      z-index 40   觀測時刻設定
-          .acct-pop          z-index 40   帳號下拉（登入/登出/我的回報）
+          .acct-pop          z-index 40   帳號下拉（登入/登出/修改密碼）
 
        B. 滿版彈窗（modal）：開啟時鎖背景滾動（syncBodyLock，body 設
           position:fixed+top 補償，連鍵盤 PageDown/End 也擋得住），按
@@ -712,6 +712,13 @@
     z-index: 3;
     top: clamp(20px, 4vw, 32px);
     right: clamp(24px, 6vw, 72px);
+    /* 右上角入口群：我的回報 / 帳號兩顆 pill，窄幕放不下時折行。 */
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+    max-width: calc(100vw - 2 * clamp(24px, 6vw, 72px));
   }
   .acct[hidden] { display: none; }
   /* .hero clips its overflow to keep the banner inside its border, so this
@@ -767,21 +774,6 @@
   .chip.is-primary { color: #06102a; background: var(--text); border-color: var(--text); font-weight: 600; }
   .chip:disabled { opacity: 0.45; cursor: default; }
 
-  /* 表格後方的回報入口。提示文案和按鈕要一起隱藏，否則沒有 Worker 時會留下
-     一句沒有下文的問句，所以 JS 切的是整塊而不是按鈕。 */
-  .fb-cta {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 10px 14px;
-    margin-top: 22px;
-    padding-top: 20px;
-    border-top: 1px solid var(--line);
-  }
-  .fb-cta[hidden] { display: none; }
-  .fb-cta p { margin: 0; font-size: 13.5px; color: var(--muted); }
-
   #fb-modal {
     position: fixed;
     inset: 0;
@@ -833,7 +825,9 @@
     transition: opacity .25s;
   }
   .fb-dialog-bar-wrap.is-visible .fb-dialog-bar { opacity: 1; }
-  .fb-dialog h2 { margin: 0 0 6px; font-size: 18px; }
+  .fb-dialog h2 { display: flex; align-items: center; margin: 0 0 6px; font-size: 18px; }
+  /* 「我的回報」視圖把條數併進標題：字級縮小退成輔助資訊，並與標題垂直居中。 */
+  .fb-h-count { margin-left: 8px; font-size: 12.5px; font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
   .fb-dialog .section-note { margin-bottom: 18px; }
   .fb-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
   .fb-field label { font-size: 13px; color: var(--muted); }
@@ -871,21 +865,31 @@
   .fb-msg[hidden] { display: none; }
   .fb-msg.is-ok { color: var(--ok); background: var(--ok-bg); }
   .fb-msg.is-bad { color: var(--bad); background: var(--bad-bg); }
+  /* 成功提示裡的「查看我的回報」跳轉，樣式隨提示色、底線示意可點。 */
+  .fb-msg-link {
+    margin-left: 6px;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: none;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
 
-  /* 彈窗高度隨內容，上限為「視口高 − 外距」；裝不下時只有「我的回報」列表
+  /* 彈窗高度隨內容，上限為「視口高 − 外距」；裝不下時「我的回報」列表
      收縮並自滾。鏈上每層都要 min-height: 0。 */
   .fb-mine {
     display: flex;
     flex-direction: column;
     flex: 1 1 auto;
     min-height: 0;
-    margin-top: 20px;
-    padding-top: 16px;
+    margin-top: 8px;
     border-top: 1px solid var(--line);
   }
   .fb-mine[hidden] { display: none; }
-  .fb-mine h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--muted); }
-  .fb-mine h3 span { font-weight: 400; font-variant-numeric: tabular-nums; }
+  .fb-mine .fb-actions { margin-top: 14px; }
   /* 列表自己滾，讓上方的表單在翻舊紀錄時留在原地。這裡是全站唯一保留可見捲軸
      的地方 —— 紀錄是變高的文字塊，沒有捲軸就看不出下面還有多少。 */
   #fb-mine-list {
@@ -934,7 +938,8 @@
   .fb-status { margin-left: auto; padding: 1px 8px; border: 1px solid var(--line); border-radius: 999px; }
   .fb-status[data-s="done"] { color: var(--ok); border-color: var(--ok); }
   .fb-status[data-s="wontfix"] { color: var(--bad); border-color: var(--bad); }
-  .fb-empty { margin: 0; font-size: 13px; color: var(--muted); }
+  /* 空狀態文案補上與 .fb-item 一致的 9px 內距，避免貼著分隔線。 */
+  .fb-empty { margin: 0; padding: 9px 0; font-size: 13px; color: var(--muted); }
 
   /* ---------- Lightbox ---------- */
   #lightbox {
@@ -1261,6 +1266,13 @@
   <div class="hero-slide" id="hero-slide-0" aria-hidden="true"></div>
   <div class="hero-slide" id="hero-slide-1" aria-hidden="true"></div>
   <div class="acct" id="acct" hidden="">
+    <button type="button" class="pill-btn" id="mine-open" aria-haspopup="dialog">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M9 6h11M9 12h11M9 18h11" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path>
+        <path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"></path>
+      </svg>
+      我的回報
+    </button>
     <button type="button" class="pill-btn" id="acct-btn" aria-haspopup="true" aria-expanded="false">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <circle cx="12" cy="8" r="3.6" stroke="currentColor" stroke-width="1.7"></circle>
@@ -1284,7 +1296,6 @@
           使用電子郵件登入
         </button>
       </div>
-      <button type="button" id="acct-mine" hidden="">我的回報</button>
       <button type="button" id="acct-change-pw" hidden="">修改密碼</button>
       <button type="button" id="acct-signout" hidden="">登出</button>
     </div>
@@ -1461,16 +1472,6 @@
     </div>
 
     <p class="empty" id="empty" hidden="">沒有符合條件的天體 / No objects match these filters.</p>
-
-    <div class="fb-cta" id="fb-cta" hidden="">
-      <p>表格中的內容與你手上的資料來源不符？</p>
-      <button type="button" class="pill-btn" id="fb-open">
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M20 14.6a2 2 0 0 1-2 2H8.6L4.5 20V5.4a2 2 0 0 1 2-2H18a2 2 0 0 1 2 2Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
-        </svg>
-        回報資料問題
-      </button>
-    </div>
   </section>
 
   <section aria-labelledby="glo-h">
@@ -1527,8 +1528,8 @@
   <div class="fb-backdrop" id="fb-backdrop"></div>
   <div class="fb-dialog" role="dialog" aria-modal="true" aria-labelledby="fb-h" id="fb-dialog">
     <div class="fb-dialog-bar-wrap" id="fb-dialog-bar-wrap"><div class="fb-dialog-bar" id="fb-dialog-bar"></div></div>
-    <h2 id="fb-h">回報資料問題</h2>
-    <p class="section-note">表格中的內容若與你手上的資料來源不符，歡迎在此回報。</p>
+    <h2 id="fb-h"><span id="fb-h-text">回報資料問題</span><span class="fb-h-count" id="fb-h-count" hidden=""></span></h2>
+    <p class="section-note" id="fb-note">表格中的內容若與你手上的資料來源不符，歡迎在此回報。</p>
 
     <p class="fb-msg" id="fb-msg" hidden=""></p>
 
@@ -1571,10 +1572,13 @@
     </form>
 
     <div class="fb-mine" id="fb-mine" hidden="">
-      <h3>我的回報<span id="fb-mine-count"></span></h3>
       <div class="fb-mine-scroll" id="fb-mine-scroll">
         <div id="fb-mine-list"></div>
         <div class="fb-mine-bar" id="fb-mine-bar" aria-hidden="true"></div>
+      </div>
+      <div class="fb-actions">
+        <button type="button" class="chip is-primary" id="fb-mine-report">回報資料問題</button>
+        <button type="button" class="chip" id="fb-mine-close">關閉</button>
       </div>
     </div>
   </div>
@@ -3105,17 +3109,25 @@
       var p = btn.dataset.provider;
       btn.hidden = !!user || !availableProviders.includes(p);
     });
-    $("acct-mine").hidden = !user;
+    // 「我的回報」未登入也顯示：點開是登入提示，登入後直接落在列表視圖。
     // 只有站內 email 帳號有密碼可改；GitHub / Google 帳號走第三方，不顯示入口。
     $("acct-change-pw").hidden = !(user && user.provider === "email");
     $("acct-signout").hidden = !user;
   }
 
-  function setFbMsg(text, tone) {
+  // withMineLink＝在提示後面附上「查看我的回報」跳轉，點了就地切到列表視圖。
+  function setFbMsg(text, tone, withMineLink) {
     var el = $("fb-msg");
     el.hidden = !text;
     el.textContent = text || "";
     el.className = "fb-msg" + (tone ? " " + tone : "");
+    if (!text || !withMineLink) return;
+    var link = document.createElement("button");
+    link.type = "button";
+    link.className = "fb-msg-link";
+    link.textContent = "查看我的回報";
+    link.addEventListener("click", function () { fbSetOpen(true, "mine"); });
+    el.appendChild(link);
   }
   // 限流提示只顯示觸發當下的瞬間值（後端給的真實剩餘秒數），不做每秒跳動：
   // 向上取整到分鐘，最長一小時；文案固定不變，使用者重試時自然會拿到新值。
@@ -3217,20 +3229,33 @@
     }
   }
 
-  function fbSetOpen(open) {
+  /* 回報彈窗單視圖：「form」＝回報表單、「mine」＝我的回報列表，未登入一律
+     顯示登入提示。fbView 記住要去的視圖——訪客視圖裡登入成功後（fbSetOpen(true)
+     不帶 view）能接著切到登入前想看的視圖。 */
+  var fbView = "form";
+  function fbSetOpen(open, view) {
+    if (view) fbView = view;
     $("fb-modal").hidden = !open;
     setFbMsg("");
     syncBodyLock();
     if (!open) return;
 
     var signedIn = !!account.user;
+    var mine = signedIn && fbView === "mine";
     $("fb-guest").hidden = signedIn;
-    $("fb-form").hidden = !signedIn;
-    $("fb-mine").hidden = !signedIn;
+    $("fb-form").hidden = !(signedIn && !mine);
+    $("fb-mine").hidden = !mine;
+    $("fb-h-text").textContent = mine ? "我的回報" : "回報資料問題";
+    $("fb-note").hidden = mine;
+    $("fb-h-count").hidden = !mine;
     if (!signedIn) return;
-    autosizeFbContent();
-    $("fb-content").focus();
-    loadMyFeedback().then(syncDialogBar);
+    if (mine) {
+      loadMyFeedback().then(syncDialogBar);
+    } else {
+      autosizeFbContent();
+      $("fb-content").focus();
+      syncDialogBar();
+    }
   }
 
   function fbDate(ms) {
@@ -3274,13 +3299,13 @@
   function loadMyFeedback() {
     return api("/api/feedback").then(function (body) {
       var items = body.items || [];
-      $("fb-mine-count").textContent = items.length ? "（" + items.length + "）" : "";
+      $("fb-h-count").textContent = items.length ? "（" + items.length + "）" : "";
       $("fb-mine-list").innerHTML = items.length
         ? items.map(fbItemHtml).join("")
         : '<p class="fb-empty">還沒有回報紀錄。</p>';
       syncMineBar();
     }).catch(function () {
-      $("fb-mine-count").textContent = "";
+      $("fb-h-count").textContent = "";
       $("fb-mine-list").innerHTML = '<p class="fb-empty">回報紀錄載入失敗。</p>';
     });
   }
@@ -3302,7 +3327,7 @@
       $("fb-content").value = "";
       syncFbCount();
       autosizeFbContent();
-      setFbMsg("已送出，感謝回報。", "is-ok");
+      setFbMsg("已送出，感謝回報。", "is-ok", true);
       return loadMyFeedback();
     }).catch(function (err) {
       if (err.message === "too many submissions, try later" && err.retryAfter) {
@@ -3473,7 +3498,6 @@
         account.user = results[0].user;
         availableProviders = results[1].providers || ["github"];
         $("acct").hidden = false;
-        $("fb-cta").hidden = false;
         syncAccountUi();
         syncFbCount();
       }).catch(function () {});
@@ -3513,7 +3537,8 @@
     $("auth-backdrop").addEventListener("click", function () { authSetOpen(false); });
     $("auth-form").addEventListener("submit", submitAuth);
 
-    $("acct-mine").addEventListener("click", function () { setAcctOpen(false); fbSetOpen(true); });
+    $("mine-open").addEventListener("click", function () { fbSetOpen(true, "mine"); });
+    $("fb-mine-report").addEventListener("click", function () { fbSetOpen(true, "form"); });
     $("acct-change-pw").addEventListener("click", function () {
       setAcctOpen(false);
       authSetOpen(true, "change");
@@ -3527,7 +3552,7 @@
       });
     });
 
-    $("fb-open").addEventListener("click", function () { fbSetOpen(true); });
+    $("fb-mine-close").addEventListener("click", function () { fbSetOpen(false); });
     $("fb-cancel").addEventListener("click", function () { fbSetOpen(false); });
     $("fb-guest-cancel").addEventListener("click", function () { fbSetOpen(false); });
     $("fb-backdrop").addEventListener("click", function () { fbSetOpen(false); });
