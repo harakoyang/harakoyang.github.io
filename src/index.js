@@ -64,6 +64,10 @@ async function route(request, env, url) {
     if (method === "POST") return feedback.create(request, env);
     if (method === "GET") return feedback.listMine(request, env);
   }
+  const mineMatch = path.match(/^\/api\/feedback\/(\d+)$/);
+  if (method === "DELETE" && mineMatch) {
+    return feedback.remove(request, env, Number(mineMatch[1]));
+  }
 
   if (method === "GET" && path === "/api/admin/feedback") return feedback.listAll(request, env, url);
   if (path === "/api/admin/review") {

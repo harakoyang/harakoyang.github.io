@@ -58,6 +58,20 @@ export async function listMine(request, env) {
   return json({ items: results });
 }
 
+// 移除自己的回報：WHERE 同時限定 id 與 user_id。「不存在」與「不是本人的」
+// 都回同一個 404，不區分 403，避免讓呼叫方試探出某 id 是否屬於他人。
+export async function remove(request, env, id) {
+  const user = await requireUser(request, env);
+  const result = await env.DB.prepare(
+    "DELETE FROM feedback WHERE id = ? AND user_id = ?"
+  )
+    .bind(id, user.id)
+    .run();
+  if (!result.meta.changes) throw new HttpError(404, "feedback not found");
+
+  return json({ ok: true, id });
+}
+
 export async function listAll(request, env, url) {
   await requireAdmin(request, env);
   const status = url.searchParams.get("status") || "new";
