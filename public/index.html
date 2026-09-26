@@ -1007,8 +1007,8 @@
     .fb-item:hover .fb-status { display: none; }
     .fb-item:hover .fb-item-del { display: block; }
   }
-  /* 行動端（無 hover）的移除：常駐鈕藏起，改右滑手勢。手指右滑條目時
-     內容跟手右移（超過 120px 加橡皮筋阻尼），左緣淡入紅色「移除」膠囊；
+  /* 行動端（無 hover）的移除：常駐鈕藏起，改左滑手勢。手指左滑條目時
+     內容跟手左移（超過 120px 加橡皮筋阻尼），右緣淡入紅色「移除」膠囊；
      滑過閾值鬆手即開確認彈窗，否則彈回。膠囊用 ::before 畫，不占版面。 */
   @media (hover: none) {
     .fb-item { position: relative; transition: transform .25s; }
@@ -1016,7 +1016,7 @@
     .fb-item::before {
       content: "移除";
       position: absolute;
-      left: 10px;
+      right: 10px;
       top: 50%;
       transform: translateY(-50%);
       padding: 1px 8px;
@@ -3726,8 +3726,8 @@
     /* iOS Safari 不吃 body overflow:hidden，小彈窗比照回報彈窗攔 touchmove。 */
     $("fb-del-modal").addEventListener("touchmove", function (e) { e.preventDefault(); }, { passive: false });
 
-    // 行動端右滑移除：右滑條目（水平位移明顯大於垂直才算，垂直讓位給捲動），
-    // 內容跟手右移、左緣膠囊隨進度淡入；鬆手時滑過 SWIPE_ON 就開確認彈窗，
+    // 行動端左滑移除：左滑條目（水平位移明顯大於垂直才算，垂直讓位給捲動），
+    // 內容跟手左移、右緣膠囊隨進度淡入；鬆手時滑過 SWIPE_ON 就開確認彈窗，
     // 否則彈回。桌面端 touch 事件不會來這裡，邏輯無副作用。
     var SWIPE_ON = 72;
     var swipeItem = null, swipeX = 0, swipeY = 0, swipeDx = 0, swipeLocked = false;
@@ -3761,18 +3761,18 @@
       }
       e.preventDefault();
       swipeDx = dx;
-      if (dx <= 0) {
+      if (dx >= 0) {
         swipeItem.style.transform = "translateX(0)";
         swipeItem.style.setProperty("--swipe-p", "0");
         return;
       }
-      var tx = Math.min(dx, 120) + (dx > 120 ? (dx - 120) * 0.2 : 0);
-      swipeItem.style.transform = "translateX(" + tx.toFixed(1) + "px)";
-      swipeItem.style.setProperty("--swipe-p", String(Math.min(dx / SWIPE_ON, 1)));
+      var ax = Math.min(-dx, 120) + (-dx > 120 ? (-dx - 120) * 0.2 : 0);
+      swipeItem.style.transform = "translateX(" + (-ax).toFixed(1) + "px)";
+      swipeItem.style.setProperty("--swipe-p", String(Math.min(-dx / SWIPE_ON, 1)));
     }, { passive: false });
     $("fb-mine-list").addEventListener("touchend", function () {
       if (!swipeItem) return;
-      var hit = swipeLocked && swipeDx >= SWIPE_ON;
+      var hit = swipeLocked && swipeDx <= -SWIPE_ON;
       var id = hit ? Number(swipeItem.querySelector(".fb-item-del").dataset.id) : 0;
       swipeReset();
       if (hit) {
