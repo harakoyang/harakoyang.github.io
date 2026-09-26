@@ -778,6 +778,21 @@
   .chip.is-danger { color: #fff; background: var(--bad); border-color: var(--bad); font-weight: 600; }
   .chip:disabled { opacity: 0.45; cursor: default; }
 
+  /* 表格後方的回報入口。提示文案和按鈕要一起隱藏，否則沒有 Worker 時會留下
+     一句沒有下文的問句，所以 JS 切的是整塊而不是按鈕。 */
+  .fb-cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    margin-top: 22px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+  }
+  .fb-cta[hidden] { display: none; }
+  .fb-cta p { margin: 0; font-size: 13.5px; color: var(--muted); }
+
   #fb-modal {
     position: fixed;
     inset: 0;
@@ -974,9 +989,9 @@
     font-variant-numeric: tabular-nums;
   }
   .fb-item-head b { color: var(--text); font-size: 12.5px; }
-  /* 移除入口與狀態 tag 同層（條目 flex 行的最右），尺寸比照 tag 的膠囊
-     （同內距/邊框寬/圓角/字號）但整體危險紅示警，hover 條目時在 tag 原位
-     現身、tag 讓位，右緣對齊不跳位；觸控裝置沒有 hover，移除鈕平時就顯示。 */
+  /* 移除入口與狀態 tag 同層（條目 flex 行的最右）：hover 條目時移除鈕在
+     tag 原位現身、tag 讓位，右緣對齊不跳位。行動端（無 hover）不顯示
+     此鈕，改由右滑手勢觸發，見下方 @media (hover: none) 區塊。 */
   .fb-item-del {
     flex: 0 0 auto;
     padding: 1px 8px;
@@ -991,6 +1006,28 @@
     .fb-item .fb-item-del { display: none; }
     .fb-item:hover .fb-status { display: none; }
     .fb-item:hover .fb-item-del { display: block; }
+  }
+  /* 行動端（無 hover）的移除：常駐鈕藏起，改右滑手勢。手指右滑條目時
+     內容跟手右移（超過 120px 加橡皮筋阻尼），左緣淡入紅色「移除」膠囊；
+     滑過閾值鬆手即開確認彈窗，否則彈回。膠囊用 ::before 畫，不占版面。 */
+  @media (hover: none) {
+    .fb-item { position: relative; transition: transform .25s; }
+    .fb-item.is-swiping { transition: none; }
+    .fb-item::before {
+      content: "移除";
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      padding: 1px 8px;
+      border: 1px solid var(--bad);
+      border-radius: 999px;
+      background: var(--panel-solid);
+      color: var(--bad);
+      opacity: var(--swipe-p, 0);
+      pointer-events: none;
+    }
+    .fb-item-del { display: none; }
   }
   .fb-item-del[disabled] { opacity: 0.45; cursor: default; }
   .fb-status { flex: 0 0 auto; padding: 1px 8px; border: 1px solid var(--line); border-radius: 999px; }
@@ -1530,6 +1567,16 @@
     </div>
 
     <p class="empty" id="empty" hidden="">沒有符合條件的天體 / No objects match these filters.</p>
+
+    <div class="fb-cta" id="fb-cta" hidden="">
+      <p>表格中的內容與你手上的資料來源不符？</p>
+      <button type="button" class="pill-btn" id="fb-open">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M20 14.6a2 2 0 0 1-2 2H8.6L4.5 20V5.4a2 2 0 0 1 2-2H18a2 2 0 0 1 2 2Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
+        </svg>
+        回報資料問題
+      </button>
+    </div>
   </section>
 
   <section aria-labelledby="glo-h">
@@ -1586,13 +1633,13 @@
   <div class="fb-backdrop" id="fb-backdrop"></div>
   <div class="fb-dialog" role="dialog" aria-modal="true" aria-labelledby="fb-h" id="fb-dialog">
     <div class="fb-dialog-bar-wrap" id="fb-dialog-bar-wrap"><div class="fb-dialog-bar" id="fb-dialog-bar"></div></div>
-    <h2 id="fb-h"><span id="fb-h-text">回報資料問題</span><span class="fb-h-count" id="fb-h-count" hidden=""></span></h2>
+    <h2 id="fb-h"><span id="fb-h-text">添加回報</span><span class="fb-h-count" id="fb-h-count" hidden=""></span></h2>
     <p class="section-note" id="fb-note">表格中的內容若與你手上的資料來源不符，歡迎在此回報。</p>
 
     <p class="fb-msg" id="fb-msg" hidden=""></p>
 
     <div id="fb-guest" hidden="">
-      <p class="fb-empty">回報前請先登入，以查看您的回報記錄。</p>
+      <p class="fb-empty">回報前請先登入，以查看您的回報紀錄。</p>
       <div class="fb-actions">
         <button type="button" class="chip" id="fb-guest-cancel">取消</button>
         <button type="button" class="chip is-primary" data-provider="github" hidden>
@@ -1635,7 +1682,7 @@
         <div class="fb-mine-bar" id="fb-mine-bar" aria-hidden="true"></div>
       </div>
       <div class="fb-actions">
-        <button type="button" class="chip is-primary" id="fb-mine-report">回報資料問題</button>
+        <button type="button" class="chip is-primary" id="fb-mine-report">添加回報</button>
         <button type="button" class="chip" id="fb-mine-close">關閉</button>
       </div>
     </div>
@@ -3317,7 +3364,7 @@
     $("fb-guest").hidden = signedIn;
     $("fb-form").hidden = !(signedIn && !mine);
     $("fb-mine").hidden = !mine;
-    $("fb-h-text").textContent = mine ? "我的回報" : "回報資料問題";
+    $("fb-h-text").textContent = mine ? "我的回報" : "添加回報";
     $("fb-note").hidden = mine;
     $("fb-h-count").hidden = !mine;
     if (!signedIn) return;
@@ -3574,6 +3621,7 @@
         account.user = results[0].user;
         availableProviders = results[1].providers || ["github"];
         $("acct").hidden = false;
+        $("fb-cta").hidden = false;
         syncAccountUi();
         syncFbCount();
       }).catch(function () {});
@@ -3628,6 +3676,8 @@
       });
     });
 
+    // 表格後方的回報入口：點開就是回報表單視圖。
+    $("fb-open").addEventListener("click", function () { fbSetOpen(true, "form"); });
     $("fb-mine-close").addEventListener("click", function () { fbSetOpen(false); });
     $("fb-cancel").addEventListener("click", function () { fbSetOpen(false); });
     $("fb-guest-cancel").addEventListener("click", function () { fbSetOpen(false); });
@@ -3675,6 +3725,62 @@
 
     /* iOS Safari 不吃 body overflow:hidden，小彈窗比照回報彈窗攔 touchmove。 */
     $("fb-del-modal").addEventListener("touchmove", function (e) { e.preventDefault(); }, { passive: false });
+
+    // 行動端右滑移除：右滑條目（水平位移明顯大於垂直才算，垂直讓位給捲動），
+    // 內容跟手右移、左緣膠囊隨進度淡入；鬆手時滑過 SWIPE_ON 就開確認彈窗，
+    // 否則彈回。桌面端 touch 事件不會來這裡，邏輯無副作用。
+    var SWIPE_ON = 72;
+    var swipeItem = null, swipeX = 0, swipeY = 0, swipeDx = 0, swipeLocked = false;
+    function swipeReset() {
+      if (!swipeItem) return;
+      swipeItem.style.transform = "";
+      swipeItem.style.removeProperty("--swipe-p");
+      swipeItem.classList.remove("is-swiping");
+      swipeItem = null;
+      swipeLocked = false;
+    }
+    $("fb-mine-list").addEventListener("touchstart", function (e) {
+      if (e.touches.length !== 1) return;
+      var item = e.target.closest(".fb-item");
+      if (!item) return;
+      swipeItem = item;
+      swipeX = e.touches[0].clientX;
+      swipeY = e.touches[0].clientY;
+      swipeDx = 0;
+      swipeLocked = false;
+    }, { passive: true });
+    $("fb-mine-list").addEventListener("touchmove", function (e) {
+      if (!swipeItem || e.touches.length !== 1) return;
+      var dx = e.touches[0].clientX - swipeX;
+      var dy = e.touches[0].clientY - swipeY;
+      if (!swipeLocked) {
+        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+        if (Math.abs(dy) >= Math.abs(dx)) { swipeReset(); return; }
+        swipeLocked = true;
+        swipeItem.classList.add("is-swiping");
+      }
+      e.preventDefault();
+      swipeDx = dx;
+      if (dx <= 0) {
+        swipeItem.style.transform = "translateX(0)";
+        swipeItem.style.setProperty("--swipe-p", "0");
+        return;
+      }
+      var tx = Math.min(dx, 120) + (dx > 120 ? (dx - 120) * 0.2 : 0);
+      swipeItem.style.transform = "translateX(" + tx.toFixed(1) + "px)";
+      swipeItem.style.setProperty("--swipe-p", String(Math.min(dx / SWIPE_ON, 1)));
+    }, { passive: false });
+    $("fb-mine-list").addEventListener("touchend", function () {
+      if (!swipeItem) return;
+      var hit = swipeLocked && swipeDx >= SWIPE_ON;
+      var id = hit ? Number(swipeItem.querySelector(".fb-item-del").dataset.id) : 0;
+      swipeReset();
+      if (hit) {
+        fbDelId = id;
+        fbDelSetOpen(true);
+      }
+    });
+    $("fb-mine-list").addEventListener("touchcancel", swipeReset);
 
   $("fb-mine-list").addEventListener("scroll", flashMineBar, { passive: true });
     $("fb-dialog").addEventListener("scroll", flashDialogBar, { passive: true });
