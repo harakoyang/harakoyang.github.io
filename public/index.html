@@ -1438,7 +1438,7 @@
             <option value="5">05:00</option>
             <option value="6">06:00</option>
           </select>
-          <p class="obs-time-note" id="obs-time-note">依赤經推算在 00:00，天體處於中天高度的月份。</p>
+          <p class="obs-time-note" id="obs-time-note">依赤經推算在 00:00 時，天體處於中天高度的月份。</p>
         </div>
       </div>
     </div>
@@ -2383,7 +2383,7 @@
   function syncObsTimeUi() {
     $("obs-time-val").textContent = formatHour(state.obsHour);
     $("obs-time-note").textContent =
-      "依赤經推算在 " + formatHour(state.obsHour) + "，天體處於中天高度的月份。";
+      "依赤經推算在 " + formatHour(state.obsHour) + " 時，天體處於中天高度的月份。";
   }
 
   function bindObsTime() {
