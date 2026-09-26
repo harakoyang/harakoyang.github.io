@@ -1007,12 +1007,16 @@
     .fb-item:hover .fb-status { display: none; }
     .fb-item:hover .fb-item-del { display: block; }
   }
-  /* 行動端（無 hover）的移除：常駐鈕藏起，改左滑手勢。手指左滑條目時
-     內容跟手左移（超過 120px 加橡皮筋阻尼），右緣淡入紅色「移除」膠囊；
-     滑過閾值鬆手即開確認彈窗，否則彈回。膠囊用 ::before 畫，不占版面。 */
+  /* 行動端（無 hover）的移除：常駐鈕藏起，改左滑手勢。滑的是條目內容
+     （正文＋tag），最多滑到 SWIPE_ON（72px）就停住——到達觸發距離後
+     不再跟手；紅色「移除」膠囊固定在條目右緣並墊到內容下層
+     （z-index:-1、tag 墊實底）——內容左移後膠囊從 tag 右側露出，而不是
+     蓋在 tag 上；滑到閾值鬆手即開確認彈窗，否則彈回。 */
   @media (hover: none) {
-    .fb-item { position: relative; transition: transform .25s; }
-    .fb-item.is-swiping { transition: none; }
+    .fb-item { position: relative; z-index: 0; }
+    .fb-item-main, .fb-status { transition: transform .25s; }
+    .fb-item.is-swiping .fb-item-main,
+    .fb-item.is-swiping .fb-status { transition: none; }
     .fb-item::before {
       content: "移除";
       position: absolute;
@@ -1024,9 +1028,11 @@
       border-radius: 999px;
       background: var(--panel-solid);
       color: var(--bad);
+      z-index: -1;
       opacity: var(--swipe-p, 0);
       pointer-events: none;
     }
+    .fb-item .fb-status { background: var(--panel-solid); }
     .fb-item-del { display: none; }
   }
   .fb-item-del[disabled] { opacity: 0.45; cursor: default; }
@@ -3726,14 +3732,20 @@
     /* iOS Safari 不吃 body overflow:hidden，小彈窗比照回報彈窗攔 touchmove。 */
     $("fb-del-modal").addEventListener("touchmove", function (e) { e.preventDefault(); }, { passive: false });
 
-    // 行動端左滑移除：左滑條目（水平位移明顯大於垂直才算，垂直讓位給捲動），
-    // 內容跟手左移、右緣膠囊隨進度淡入；鬆手時滑過 SWIPE_ON 就開確認彈窗，
-    // 否則彈回。桌面端 touch 事件不會來這裡，邏輯無副作用。
+    // 行動端左滑移除：左滑條目內容（正文＋tag；水平位移明顯大於垂直才算，
+    // 垂直讓位給捲動），最多滑到 SWIPE_ON 就停住（到達觸發距離後不再跟手），
+    // 紅色「移除」膠囊固定在右緣、從 tag 右側露出；滑到閾值鬆手就開確認
+    // 彈窗，否則彈回。桌面端 touch 事件不會來這裡，邏輯無副作用。
     var SWIPE_ON = 72;
     var swipeItem = null, swipeX = 0, swipeY = 0, swipeDx = 0, swipeLocked = false;
+    function swipeSlide(item, tx) {
+      var m = item.querySelector(".fb-item-main"), s = item.querySelector(".fb-status");
+      if (m) m.style.transform = tx;
+      if (s) s.style.transform = tx;
+    }
     function swipeReset() {
       if (!swipeItem) return;
-      swipeItem.style.transform = "";
+      swipeSlide(swipeItem, "");
       swipeItem.style.removeProperty("--swipe-p");
       swipeItem.classList.remove("is-swiping");
       swipeItem = null;
@@ -3762,12 +3774,12 @@
       e.preventDefault();
       swipeDx = dx;
       if (dx >= 0) {
-        swipeItem.style.transform = "translateX(0)";
+        swipeSlide(swipeItem, "");
         swipeItem.style.setProperty("--swipe-p", "0");
         return;
       }
-      var ax = Math.min(-dx, 120) + (-dx > 120 ? (-dx - 120) * 0.2 : 0);
-      swipeItem.style.transform = "translateX(" + (-ax).toFixed(1) + "px)";
+      var ax = Math.min(-dx, SWIPE_ON);
+      swipeSlide(swipeItem, "translateX(" + (-ax).toFixed(1) + "px)");
       swipeItem.style.setProperty("--swipe-p", String(Math.min(-dx / SWIPE_ON, 1)));
     }, { passive: false });
     $("fb-mine-list").addEventListener("touchend", function () {
