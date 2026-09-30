@@ -3381,7 +3381,15 @@
     $("fb-modal").hidden = !open;
     setFbMsg("");
     syncBodyLock();
-    if (!open) return;
+    if (!open) {
+      /* 關閉時解綁 visualViewport 監聽並清空 inline style，避免影響其他彈窗。 */
+      unbindFbVv();
+      return;
+    }
+    /* 開啟時綁定 visualViewport 監聯，讓 #fb-modal 跟著可見區移動——
+       這樣鍵盤彈出時彈窗不會被 iOS 的 scroll-to-visible 推到視野外，
+       textarea 與 input 的行為也會一致。 */
+    bindFbVv();
 
     var signedIn = !!account.user;
     var mine = signedIn && fbView === "mine";
@@ -3401,27 +3409,53 @@
       $("fb-dialog").scrollTop = 0;
       autosizeFbContent();
       $("fb-content").focus();
-      /* textarea 聚焦時 iOS Safari 會主動 scroll 讓它可見，但算的是 layout
-         viewport 而非 dvh 縮小後的可見區，會把彈窗頂出去。改聽 visualViewport
-         的 resize：鍵盤彈出會讓 visualViewport.height 縮小並觸發 resize，
-         此時 dvh 已穩定，再 scrollIntoView 把 fb-content 拉回 .fb-dialog
-         可見區中央；1.5 秒後解綁避免常駐。舊瀏覽器無 visualViewport 時
-         退回 setTimeout。 */
-      if (window.visualViewport) {
-        var onVvResize = function () {
-          $("fb-content").scrollIntoView({ block: "center" });
-        };
-        window.visualViewport.addEventListener("resize", onVvResize);
-        setTimeout(function () {
-          window.visualViewport.removeEventListener("resize", onVvResize);
-        }, 1500);
-      } else {
-        setTimeout(function () {
-          $("fb-content").scrollIntoView({ block: "center", behavior: "smooth" });
-        }, 350);
-      }
+      /* 不再用 scrollIntoView 拉回 fb-content：iOS Safari 對 textarea 聚焦時的
+         「自動 scroll-to-visible」與程式主動 scrollIntoView 互相拉鋸會造成跳動，
+         input type=text 沒這問題（無內部滾動容器）。改由 syncFbModalToViewport
+         讓 #fb-modal 跟隨 visualViewport——彈窗本身對齊可見區，iOS 怎麼捲
+         .fb-dialog 內部都不會把彈窗頂出視野外。 */
       syncDialogBar();
     }
+  }
+
+  /* 彈窗跟隨 visual viewport：鍵盤彈出時 visualViewport.height 縮小、offsetTop
+     位移，把 #fb-modal 的 inline style 同步成 visualViewport 的位置與尺寸，
+     彈窗就始終對齊用戶實際可見區，不會被 iOS 的 scroll-to-visible 推到視野外。
+     開啟時綁定、關閉時解綁並清空 inline style。 */
+  var fbVvHandler = null;
+  function syncFbModalToViewport() {
+    var vv = window.visualViewport;
+    if (!vv) return;
+    var modal = $("fb-modal");
+    /* 用 explicit width/height + 顯式 bottom/right:auto 蓋掉 CSS 的 inset:0
+       撐滿行為，讓 #fb-modal 完全等於 visualViewport 的位置與尺寸。 */
+    modal.style.width = vv.width + "px";
+    modal.style.height = vv.height + "px";
+    modal.style.top = vv.offsetTop + "px";
+    modal.style.left = vv.offsetLeft + "px";
+    modal.style.bottom = "auto";
+    modal.style.right = "auto";
+  }
+  function bindFbVv() {
+    if (!window.visualViewport) return;
+    if (fbVvHandler) return;
+    fbVvHandler = syncFbModalToViewport;
+    window.visualViewport.addEventListener("resize", fbVvHandler);
+    window.visualViewport.addEventListener("scroll", fbVvHandler);
+    syncFbModalToViewport();
+  }
+  function unbindFbVv() {
+    if (!fbVvHandler) return;
+    window.visualViewport.removeEventListener("resize", fbVvHandler);
+    window.visualViewport.removeEventListener("scroll", fbVvHandler);
+    fbVvHandler = null;
+    var modal = $("fb-modal");
+    modal.style.width = "";
+    modal.style.height = "";
+    modal.style.top = "";
+    modal.style.left = "";
+    modal.style.bottom = "";
+    modal.style.right = "";
   }
 
   function fbDate(ms) {
