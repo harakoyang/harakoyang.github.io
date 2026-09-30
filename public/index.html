@@ -1372,7 +1372,7 @@
         <path d="M9 6h11M9 12h11M9 18h11" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path>
         <path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"></path>
       </svg>
-      我的回報
+      <span id="mine-open-label">添加回報</span>
     </button>
     <button type="button" class="pill-btn" id="acct-btn" aria-haspopup="true" aria-expanded="false">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -1640,7 +1640,7 @@
   <div class="fb-dialog" role="dialog" aria-modal="true" aria-labelledby="fb-h" id="fb-dialog">
     <div class="fb-dialog-bar-wrap" id="fb-dialog-bar-wrap"><div class="fb-dialog-bar" id="fb-dialog-bar"></div></div>
     <h2 id="fb-h"><span id="fb-h-text">添加回報</span><span class="fb-h-count" id="fb-h-count" hidden=""></span></h2>
-    <p class="section-note" id="fb-note">表格中的內容若與你手上的資料來源不符，歡迎在此回報。</p>
+    <p class="section-note" id="fb-note">列表中的內容若與你手上的資料來源不符，歡迎在此回報。</p>
 
     <p class="fb-msg" id="fb-msg" hidden=""></p>
 
@@ -3225,6 +3225,7 @@
   function syncAccountUi() {
     var user = account.user;
     $("acct-label").textContent = user ? user.login : "登入";
+    $("mine-open-label").textContent = user ? "我的回報" : "添加回報";
     $("acct-who").hidden = !user;
     if (user) $("acct-who").innerHTML = "登入中<b>" + esc(user.login) + "</b>";
     $("acct-providers").hidden = !!user;
