@@ -3411,7 +3411,13 @@
          .fb-dialog 可視區外而被誤以為「彈窗被頂出去」。 */
       $("fb-dialog").scrollTop = 0;
       autosizeFbContent();
-      $("fb-content").focus();
+      /* preventScroll:true 阻止 iOS Safari 在程序性聚焦後自動 scroll-to-visible
+         fb-content——這正是「彈框跳動」的根因：fb-target 從不被程序性聚焦，用
+         戶手動點擊時元素就在指尖位置，iOS 不需再滾；而 fb-content 被 JS 主動
+         focus 時 iOS 沒有「點擊位置」參考，會嘗試把它滾到可見區中央，連帶把
+         整個 .fb-dialog 內容往上頂、fb-target 與標題被推出視野，看起來就是
+         「彈框整體跳動」。preventScroll 讂聚焦後不滾動，與 fb-target 行為對齊。 */
+      $("fb-content").focus({ preventScroll: true });
       /* 不再調 scrollIntoView：之前 visualViewport.resize → scrollIntoView 與
          iOS 自動 scroll-to-visible 互相拉鋸，且把 #fb-modal 改跟隨 visualViewport
          會留縫讓底層透出。根因是 textarea 預設成為 scroll-to-visible 目標——
