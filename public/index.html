@@ -881,7 +881,11 @@
   .fb-field label { font-size: 13px; color: var(--muted); }
   /* 輸入框隨內容自動長高（JS 依 scrollHeight 調整），超過上限後改為內部滾動。
      +2px 是 border-box 下補上下各 1px 邊框，否則會差 2px 而冒出捲軸。
-     原生捲軸會占版面寬度，改用自繪滑塊（.fb-ta-bar），滾動時淡入、停手淡出。 */
+     原生捲軸會占版面寬度，改用自繪滑塊（.fb-ta-bar），滾動時淡入、停手淡出。
+     預設不給 overflow-y，讓 textarea 不成為 iOS Safari 的 scroll-to-visible
+     目標——否則聚焦時 iOS 會自動捲動它與 body position:fixed 拉鋸造成畫面
+     跳動（input type=text 沒這問題）。等內容真的超過 120px 才由 JS 加上
+     .is-overflow 動態啟用內部滾動，此時鍵盤已彈出，不再觸發新的聚焦事件。 */
   .fb-ta-scroll { position: relative; }
   .fb-dialog textarea {
     width: 100%;
@@ -889,9 +893,11 @@
     resize: none;
     line-height: 1.6;
     max-height: 120px;
+    scrollbar-width: none;
+  }
+  .fb-dialog textarea.is-overflow {
     overflow-y: auto;
     overscroll-behavior: contain;
-    scrollbar-width: none;
   }
   .fb-dialog textarea::-webkit-scrollbar { width: 0; height: 0; }
   .fb-ta-bar {
@@ -3283,10 +3289,15 @@
 
   // 輸入框跟著內容長高：先歸 auto 讓它縮回兩行，再量 scrollHeight 設回去。
   // 超過 CSS max-height 後高度被夾住，改由輸入框自己滾動。
+  // 動態切換 .is-overflow：內容未超過 120px 時不開 overflow-y，讓 textarea
+  // 不成為 iOS 的 scroll-to-visible 目標；超過了才加，鍵盤已彈出無副作用。
   function autosizeFbContent() {
     var ta = $("fb-content");
     ta.style.height = "auto";
-    ta.style.height = (ta.scrollHeight + 2) + "px";
+    var sh = ta.scrollHeight;
+    ta.style.height = (sh + 2) + "px";
+    if (sh + 2 > 120) ta.classList.add("is-overflow");
+    else ta.classList.remove("is-overflow");
     syncTaBar();
   }
 
@@ -3401,25 +3412,11 @@
       $("fb-dialog").scrollTop = 0;
       autosizeFbContent();
       $("fb-content").focus();
-      /* textarea 聚焦時 iOS Safari 會主動 scroll 讓它可見，但算的是 layout
-         viewport 而非 dvh 縮小後的可見區，會把彈窗頂出去。改聽 visualViewport
-         的 resize：鍵盤彈出會讓 visualViewport.height 縮小並觸發 resize，
-         此時 dvh 已穩定，再 scrollIntoView 把 fb-content 拉回 .fb-dialog
-         可見區中央；1.5 秒後解綁避免常駐。舊瀏覽器無 visualViewport 時
-         退回 setTimeout。 */
-      if (window.visualViewport) {
-        var onVvResize = function () {
-          $("fb-content").scrollIntoView({ block: "center" });
-        };
-        window.visualViewport.addEventListener("resize", onVvResize);
-        setTimeout(function () {
-          window.visualViewport.removeEventListener("resize", onVvResize);
-        }, 1500);
-      } else {
-        setTimeout(function () {
-          $("fb-content").scrollIntoView({ block: "center", behavior: "smooth" });
-        }, 350);
-      }
+      /* 不再調 scrollIntoView：之前 visualViewport.resize → scrollIntoView 與
+         iOS 自動 scroll-to-visible 互相拉鋸，且把 #fb-modal 改跟隨 visualViewport
+         會留縫讓底層透出。根因是 textarea 預設成為 scroll-to-visible 目標——
+         現已改為內容超過 120px 才動態加 .is-overflow 開 overflow，聚焦瞬間
+         textarea 不是滾動容器，iOS 不會拉扯，行為與 input type=text 一致。 */
       syncDialogBar();
     }
   }
