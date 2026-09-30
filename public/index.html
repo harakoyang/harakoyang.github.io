@@ -3401,11 +3401,25 @@
       $("fb-dialog").scrollTop = 0;
       autosizeFbContent();
       $("fb-content").focus();
-      /* focus 觸發鍵盤動畫（約 250–350ms）後 dvh 才穩定到鍵盤上方的可視高度，
-         此時再把 fb-content 滾到可視區中央，避免它被擠到可視區外。 */
-      setTimeout(function () {
-        $("fb-content").scrollIntoView({ block: "center", behavior: "smooth" });
-      }, 350);
+      /* textarea 聚焦時 iOS Safari 會主動 scroll 讓它可見，但算的是 layout
+         viewport 而非 dvh 縮小後的可見區，會把彈窗頂出去。改聽 visualViewport
+         的 resize：鍵盤彈出會讓 visualViewport.height 縮小並觸發 resize，
+         此時 dvh 已穩定，再 scrollIntoView 把 fb-content 拉回 .fb-dialog
+         可見區中央；1.5 秒後解綁避免常駐。舊瀏覽器無 visualViewport 時
+         退回 setTimeout。 */
+      if (window.visualViewport) {
+        var onVvResize = function () {
+          $("fb-content").scrollIntoView({ block: "center" });
+        };
+        window.visualViewport.addEventListener("resize", onVvResize);
+        setTimeout(function () {
+          window.visualViewport.removeEventListener("resize", onVvResize);
+        }, 1500);
+      } else {
+        setTimeout(function () {
+          $("fb-content").scrollIntoView({ block: "center", behavior: "smooth" });
+        }, 350);
+      }
       syncDialogBar();
     }
   }
