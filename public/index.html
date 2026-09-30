@@ -3395,8 +3395,17 @@
     if (mine) {
       loadMyFeedback().then(syncDialogBar);
     } else {
+      /* 切到 form 視圖前先把對話框滾動位置重置到頂，避免從 mine 視圖底部帶過來
+         的 scrollTop 與鍵盤彈出後縮小的 max-height 疊加，讓 fb-content 落在
+         .fb-dialog 可視區外而被誤以為「彈窗被頂出去」。 */
+      $("fb-dialog").scrollTop = 0;
       autosizeFbContent();
       $("fb-content").focus();
+      /* focus 觸發鍵盤動畫（約 250–350ms）後 dvh 才穩定到鍵盤上方的可視高度，
+         此時再把 fb-content 滾到可視區中央，避免它被擠到可視區外。 */
+      setTimeout(function () {
+        $("fb-content").scrollIntoView({ block: "center", behavior: "smooth" });
+      }, 350);
       syncDialogBar();
     }
   }
