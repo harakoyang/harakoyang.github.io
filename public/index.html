@@ -801,7 +801,7 @@
     place-items: center;
     /* 彈窗與視口四邊的間距；彈窗「最大」高度 = 100vh 減去兩倍這個值，改這一處即可。
        桌面與行動端共用同一套規則。 */
-    --fb-vm: 40px;
+    --fb-vm: 50px;
     padding: var(--fb-vm);
   }
   #fb-modal[hidden] { display: none; }
@@ -833,7 +833,7 @@
     z-index: 215;
     display: grid;
     place-items: center;
-    --fb-vm: 40px;
+    --fb-vm: 50px;
     padding: var(--fb-vm);
   }
   #fb-del-modal[hidden] { display: none; }
@@ -1003,9 +1003,20 @@
     cursor: pointer;
   }
   @media (hover: hover) {
-    .fb-item .fb-item-del { display: none; }
-    .fb-item:hover .fb-status { display: none; }
-    .fb-item:hover .fb-item-del { display: block; }
+    /* 隱藏移除鈕用 visibility 而非 display，並絕對定位於條目右緣：
+       狀態 tag 的 flex 空位保留不變，移除鈕右緣對齊 tag 原位、tag
+       隱形讓位，整條行寬不變、文字不跳位。 */
+    .fb-item { position: relative; }
+    .fb-item .fb-item-del {
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .fb-item:hover .fb-status { visibility: hidden; }
+    .fb-item:hover .fb-item-del { visibility: visible; pointer-events: auto; }
   }
   /* 行動端（無 hover）的移除：常駐鈕藏起，改左滑手勢。滑的是條目內容
      （正文＋tag），最多滑到 SWIPE_ON（72px）就停住——到達觸發距離後
@@ -1302,7 +1313,9 @@
     z-index: 220;
     display: grid;
     place-items: center;
-    padding: 20px;
+    /* 與 fb-modal / fb-del-modal 對齊：四邊外距與最大高度共用同一變量。 */
+    --fb-vm: 50px;
+    padding: var(--fb-vm);
   }
   #auth-modal[hidden] { display: none; }
   /* touch-action: none 讓行動端從遮罩起手的滑動不會捲到背後的頁面。 */
@@ -1311,7 +1324,7 @@
     position: relative;
     width: min(380px, 100%);
     /* 矮視口（手機橫向等）裝不下時對話框自己縮成滾動區，而不是讓背後頁面捲。 */
-    max-height: calc(100vh - 40px);
+    max-height: calc(100vh - 2 * var(--fb-vm));
     overflow-y: auto;
     padding: 22px;
     background: var(--panel-solid);
