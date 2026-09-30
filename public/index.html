@@ -3738,6 +3738,17 @@
       autosizeFbContent();
     });
     $("fb-content").addEventListener("scroll", flashTaBar, { passive: true });
+    /* 用戶失焦後再點 fb-content 時，原生 tap-focus 會觸發 iOS scroll-to-visible
+       把元素捲到可見區中央——初始聚焦用 .focus({preventScroll:true}) 已擋住，
+       但失焦後再點擊是原生事件，preventScroll 選項不適用。這裡在 mousedown
+       攔截：若 fb-content 未聚焦，preventDefault 阻斷原生 focus，改用程序性
+       .focus({preventScroll:true})——仍在用戶手勢內，鍵盤可正常彈出。若已聚
+       焦（用戶在 textarea 內點擊定位游標），放行原生行為保留游標定位。 */
+    $("fb-content").addEventListener("mousedown", function (e) {
+      if (document.activeElement === this) return;
+      e.preventDefault();
+      this.focus({ preventScroll: true });
+    });
 
     // 移除走確認彈窗（#fb-del-modal，z 215）：點條目上的「移除」先開彈窗，
     // 彈窗內「移除」才真正送 DELETE。列表以事件代理處理，重渲染免重綁。
