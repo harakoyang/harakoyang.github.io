@@ -881,7 +881,11 @@
   .fb-field label { font-size: 13px; color: var(--muted); }
   /* 輸入框隨內容自動長高（JS 依 scrollHeight 調整），超過上限後改為內部滾動。
      +2px 是 border-box 下補上下各 1px 邊框，否則會差 2px 而冒出捲軸。
-     原生捲軸會占版面寬度，改用自繪滑塊（.fb-ta-bar），滾動時淡入、停手淡出。 */
+     原生捲軸會占版面寬度，改用自繪滑塊（.fb-ta-bar），滾動時淡入、停手淡出。
+     預設不給 overflow-y，讓 textarea 不成為 iOS Safari 的 scroll-to-visible
+     目標——否則聚焦時 iOS 會自動捲動它與 body position:fixed 拉鋸造成畫面
+     跳動（input type=text 沒這問題）。等內容真的超過 120px 才由 JS 加上
+     .is-overflow 動態啟用內部滾動，此時鍵盤已彈出，不再觸發新的聚焦事件。 */
   .fb-ta-scroll { position: relative; }
   .fb-dialog textarea {
     width: 100%;
@@ -889,9 +893,11 @@
     resize: none;
     line-height: 1.6;
     max-height: 120px;
+    scrollbar-width: none;
+  }
+  .fb-dialog textarea.is-overflow {
     overflow-y: auto;
     overscroll-behavior: contain;
-    scrollbar-width: none;
   }
   .fb-dialog textarea::-webkit-scrollbar { width: 0; height: 0; }
   .fb-ta-bar {
@@ -3283,10 +3289,15 @@
 
   // 輸入框跟著內容長高：先歸 auto 讓它縮回兩行，再量 scrollHeight 設回去。
   // 超過 CSS max-height 後高度被夾住，改由輸入框自己滾動。
+  // 動態切換 .is-overflow：內容未超過 120px 時不開 overflow-y，讓 textarea
+  // 不成為 iOS 的 scroll-to-visible 目標；超過了才加，鍵盤已彈出無副作用。
   function autosizeFbContent() {
     var ta = $("fb-content");
     ta.style.height = "auto";
-    ta.style.height = (ta.scrollHeight + 2) + "px";
+    var sh = ta.scrollHeight;
+    ta.style.height = (sh + 2) + "px";
+    if (sh + 2 > 120) ta.classList.add("is-overflow");
+    else ta.classList.remove("is-overflow");
     syncTaBar();
   }
 
@@ -3395,8 +3406,23 @@
     if (mine) {
       loadMyFeedback().then(syncDialogBar);
     } else {
+      /* 切到 form 視圖前先把對話框滾動位置重置到頂，避免從 mine 視圖底部帶過來
+         的 scrollTop 與鍵盤彈出後縮小的 max-height 疊加，讓 fb-content 落在
+         .fb-dialog 可視區外而被誤以為「彈窗被頂出去」。 */
+      $("fb-dialog").scrollTop = 0;
       autosizeFbContent();
-      $("fb-content").focus();
+      /* preventScroll:true 阻止 iOS Safari 在程序性聚焦後自動 scroll-to-visible
+         fb-content——這正是「彈框跳動」的根因：fb-target 從不被程序性聚焦，用
+         戶手動點擊時元素就在指尖位置，iOS 不需再滾；而 fb-content 被 JS 主動
+         focus 時 iOS 沒有「點擊位置」參考，會嘗試把它滾到可見區中央，連帶把
+         整個 .fb-dialog 內容往上頂、fb-target 與標題被推出視野，看起來就是
+         「彈框整體跳動」。preventScroll 讂聚焦後不滾動，與 fb-target 行為對齊。 */
+      $("fb-content").focus({ preventScroll: true });
+      /* 不再調 scrollIntoView：之前 visualViewport.resize → scrollIntoView 與
+         iOS 自動 scroll-to-visible 互相拉鋸，且把 #fb-modal 改跟隨 visualViewport
+         會留縫讓底層透出。根因是 textarea 預設成為 scroll-to-visible 目標——
+         現已改為內容超過 120px 才動態加 .is-overflow 開 overflow，聚焦瞬間
+         textarea 不是滾動容器，iOS 不會拉扯，行為與 input type=text 一致。 */
       syncDialogBar();
     }
   }
@@ -3712,6 +3738,17 @@
       autosizeFbContent();
     });
     $("fb-content").addEventListener("scroll", flashTaBar, { passive: true });
+    /* 用戶失焦後再點 fb-content 時，原生 tap-focus 會觸發 iOS scroll-to-visible
+       把元素捲到可見區中央——初始聚焦用 .focus({preventScroll:true}) 已擋住，
+       但失焦後再點擊是原生事件，preventScroll 選項不適用。這裡在 mousedown
+       攔截：若 fb-content 未聚焦，preventDefault 阻斷原生 focus，改用程序性
+       .focus({preventScroll:true})——仍在用戶手勢內，鍵盤可正常彈出。若已聚
+       焦（用戶在 textarea 內點擊定位游標），放行原生行為保留游標定位。 */
+    $("fb-content").addEventListener("mousedown", function (e) {
+      if (document.activeElement === this) return;
+      e.preventDefault();
+      this.focus({ preventScroll: true });
+    });
 
     // 移除走確認彈窗（#fb-del-modal，z 215）：點條目上的「移除」先開彈窗，
     // 彈窗內「移除」才真正送 DELETE。列表以事件代理處理，重渲染免重綁。
