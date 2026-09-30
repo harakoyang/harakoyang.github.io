@@ -803,7 +803,7 @@
     place-items: center;
     /* --fb-vm 是彈窗與視口上下的間距（左右固定 20px）；彈窗「最大」高度
        = 100vh 減去兩倍這個值。桌面與行動端共用同一套規則。 */
-    --fb-vm: 70px;
+    --fb-vm: 20px;
     padding: var(--fb-vm) 20px;
   }
   #fb-modal[hidden] { display: none; }
@@ -837,7 +837,7 @@
     z-index: 215;
     display: grid;
     place-items: center;
-    --fb-vm: 70px;
+    --fb-vm: 20px;
     padding: var(--fb-vm) 20px;
   }
   #fb-del-modal[hidden] { display: none; }
@@ -1324,7 +1324,7 @@
     display: grid;
     place-items: center;
     /* 與 fb-modal / fb-del-modal 對齊：四邊外距與最大高度共用同一變量。 */
-    --fb-vm: 70px;
+    --fb-vm: 20px;
     padding: var(--fb-vm) 20px;
   }
   #auth-modal[hidden] { display: none; }
