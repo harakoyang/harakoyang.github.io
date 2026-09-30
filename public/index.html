@@ -796,6 +796,8 @@
   #fb-modal {
     position: fixed;
     inset: 0;
+    /* 鍵盤彈出時跟著 visual viewport 縮高，避免彈窗被推到視野外；舊瀏覽器忽略此行回退到 inset:0 撐滿。 */
+    height: 100dvh;
     z-index: 210;
     display: grid;
     place-items: center;
@@ -813,6 +815,8 @@
     flex-direction: column;
     width: min(520px, 100%);
     max-height: calc(100vh - 2 * var(--fb-vm));
+    /* dvh 在鍵盤彈出時跟著 visual viewport 縮小，舊瀏覽器忽略此行沿用上一行 vh fallback。 */
+    max-height: calc(100dvh - 2 * var(--fb-vm));
     padding: 22px;
     /* 平時內容都裝得下（列表會吸收多餘空間）；視口太矮裝不下時整窗才滾動。 */
     overflow-y: auto;
