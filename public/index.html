@@ -2888,6 +2888,10 @@
   }
 
   function lbOpen(i) {
+    // 切换上下一张（lbNav）也会走这里；只有首次从关闭态打开时才需要保存
+    // 滚动位置与压入历史，否则 body 被 position:fixed 钉住后 window.scrollY
+    // 已变成 0，会把之前记下的真实位置覆盖掉，导致关闭时跳回顶部。
+    var firstOpen = !lb.open;
     var obj = OBJECTS_BY_I[i];
     var img = obj && obj.img;
     if (!img || !img.full) return;
@@ -2942,13 +2946,16 @@
     // Lock the scroll position: remember where we are, prevent the browser
     // from restoring a different scroll offset on popstate, and hide the
     // page scrollbar without actually scrolling.
-    lb.savedScrollY = window.scrollY;
-    if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+    if (firstOpen) {
+      lb.savedScrollY = window.scrollY;
+      if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+    }
     syncBodyLock();
     lbResetView();
     // Push a history entry so the browser Back button closes the lightbox
-    // instead of leaving the page.
-    history.pushState({lb: true}, "");
+    // instead of leaving the page. 只在首次打开压一条，避免切换图片时堆出
+    // 多条历史记录，关闭时一次 back 即可回到原页面。
+    if (firstOpen) history.pushState({lb: true}, "");
   }
 
   function lbClose() {
