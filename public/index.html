@@ -1736,7 +1736,7 @@
   <form class="auth-dialog" role="dialog" aria-modal="true" aria-labelledby="auth-h" id="auth-form">
     <h2 id="auth-h">登入帳號</h2>
     <div class="auth-field" id="auth-name-field" hidden="">
-      <label for="auth-name">顯示名稱</label>
+      <label for="auth-name">暱稱</label>
       <input type="text" id="auth-name" maxlength="40" autocomplete="username" placeholder="怎麼稱呼你">
     </div>
     <div class="auth-field" id="auth-email-field">
@@ -1746,6 +1746,10 @@
     <div class="auth-field" id="auth-password-field">
       <label for="auth-password" id="auth-password-label">密碼</label>
       <input type="password" id="auth-password" minlength="8" maxlength="128" autocomplete="current-password" placeholder="至少 8 個字元">
+    </div>
+    <div class="auth-field" id="auth-confirm-field" hidden="">
+      <label for="auth-confirm">確認密碼</label>
+      <input type="password" id="auth-confirm" minlength="8" maxlength="128" autocomplete="new-password" placeholder="再輸入一次密碼">
     </div>
     <div class="auth-field" id="auth-newpassword-field" hidden="">
       <label for="auth-newpassword">新密碼</label>
@@ -3214,14 +3218,12 @@
   };
   // 信箱註冊/登入的錯誤文案，對應 Worker 回的英文 error 串。
   var EA_ERRORS = {
-    "login is required": "請填寫顯示名稱。",
+    "login is required": "請填寫暱稱。",
     "invalid email": "電子郵件格式不正確。",
     "password must be at least 8 characters": "密碼至少要 8 個字元。",
     "email already registered": "此電子郵件已註冊，請直接登入。",
     "invalid email or password": "電子郵件或密碼錯誤。",
     "email send failed, try later": "信件寄送失敗，請稍後再試。",
-    "current password is incorrect": "原密碼不正確。",
-    "new password must be different": "新密碼不能與原密碼相同。",
     "password login not available for this account": "此帳號使用第三方登入，沒有站內密碼。"
   };
 
@@ -3539,11 +3541,13 @@
     $("auth-name").required = register;
     $("auth-email-field").hidden = change;
     $("auth-email").required = !change;
-    $("auth-password-field").hidden = reset;
-    $("auth-password").required = !reset;
+    // 密碼欄在登入/註冊顯示；修改密碼只填新密碼，原密碼欄不再需要。
+    $("auth-password-field").hidden = reset || change;
+    $("auth-password").required = !reset && !change;
+    $("auth-confirm-field").hidden = !register;
+    $("auth-confirm").required = register;
     $("auth-newpassword-field").hidden = !change;
     $("auth-newpassword").required = change;
-    $("auth-password-label").textContent = change ? "原密碼" : "密碼";
     // 重設模式下密碼欄位藏起來但仍參與 HTML5 校驗：登入模式打了一半的
     // 短密碼會觸發 minlength 擋下表單，進重設模式時直接清空。
     if (reset) $("auth-password").value = "";
@@ -3591,8 +3595,8 @@
     authSetMsg("");
     authApplyMode();
     setTimeout(function () {
-      // 修改密碼時沒有信箱欄位，直接聚焦原密碼；其餘模式聚焦電子郵件。
-      $(authMode === "change" ? "auth-password" : "auth-email").focus();
+      // 修改密碼時只有新密碼欄，直接聚焦它；其餘模式聚焦電子郵件。
+      $(authMode === "change" ? "auth-newpassword" : "auth-email").focus();
     }, 0);
   }
 
@@ -3602,14 +3606,12 @@
     var reset = authMode === "reset";
     var change = authMode === "change";
     var payload = {
-      email: $("auth-email").value.trim(),
-      password: $("auth-password").value
+      email: $("auth-email").value.trim()
     };
+    // 修改密碼已是登入態，後端不再驗原密碼；重設密碼只寄信，兩者都不帶密碼欄。
+    if (!reset && !change) payload.password = $("auth-password").value;
     if (register) payload.login = $("auth-name").value.trim();
-    if (change) {
-      payload.oldPassword = $("auth-password").value;
-      payload.newPassword = $("auth-newpassword").value;
-    }
+    if (change) payload.newPassword = $("auth-newpassword").value;
 
     // 前端先擋一輪明顯的格式問題，error key 與 Worker 回的一致。
     if (register && !payload.login) {
@@ -3623,6 +3625,10 @@
     var pwToCheck = change ? payload.newPassword : payload.password;
     if (!reset && pwToCheck.length < 8) {
       authSetMsg(EA_ERRORS["password must be at least 8 characters"], "is-bad");
+      return;
+    }
+    if (register && pwToCheck !== $("auth-confirm").value) {
+      authSetMsg("兩次輸入的密碼不一致。", "is-bad");
       return;
     }
 
@@ -3649,7 +3655,6 @@
       }
       if (change) {
         authSetMsg("密碼已修改，下次請用新密碼登入。", "is-ok");
-        $("auth-password").value = "";
         $("auth-newpassword").value = "";
         return;
       }
