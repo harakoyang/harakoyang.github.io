@@ -518,7 +518,7 @@ export async function resetPassword(request, env) {
 }
 
 // ---------------------------------------------------------------------------
-// 修改密碼：登入態主動改密，必須驗原密碼。OAuth 帳號沒有站內密碼，直接拒絕。
+// 修改密碼：登入態主動改密，不需要驗原密碼。OAuth 帳號沒有站內密碼，直接拒絕。
 // ---------------------------------------------------------------------------
 
 export async function changePassword(request, env) {
@@ -529,7 +529,6 @@ export async function changePassword(request, env) {
 
   const body = await request.json().catch(() => null);
   if (!body) throw new HttpError(400, "expected json body");
-  const oldPassword = typeof body.oldPassword === "string" ? body.oldPassword : "";
   const newPassword = typeof body.newPassword === "string" ? body.newPassword : "";
 
   if (newPassword.length < PASSWORD_MIN) {
@@ -538,19 +537,9 @@ export async function changePassword(request, env) {
   if (newPassword.length > PASSWORD_MAX) {
     throw new HttpError(400, `password must be at most ${PASSWORD_MAX} characters`);
   }
-  if (newPassword === oldPassword) {
-    throw new HttpError(400, "new password must be different");
-  }
 
-  // PBKDF2 一輪 10 萬次迭代很吃 CPU，限流必須排在驗密碼前面。
+  // PBKDF2 一輪 10 萬次迭代很吃 CPU，限流必須排在雜湊前面。
   await rlGuard(env, `chpw:${user.id}`, 10);
-
-  const row = await env.DB.prepare("SELECT password_hash FROM users WHERE id = ?")
-    .bind(user.id)
-    .first();
-  if (!row || !(await verifyPassword(oldPassword, row.password_hash))) {
-    throw new HttpError(401, "current password is incorrect");
-  }
 
   // 與重設路徑同一套 hashPassword，保證登入驗證契約一致。
   await env.DB.prepare("UPDATE users SET password_hash = ? WHERE id = ?")
