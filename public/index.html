@@ -3541,11 +3541,11 @@
     $("auth-name").required = register;
     $("auth-email-field").hidden = change;
     $("auth-email").required = !change;
-    // 密碼欄在登入/註冊顯示；修改密碼只填新密碼，原密碼欄不再需要。
+    // 密碼欄在登入/註冊顯示；修改密碼填新密碼＋確認密碼，原密碼欄不再需要。
     $("auth-password-field").hidden = reset || change;
     $("auth-password").required = !reset && !change;
-    $("auth-confirm-field").hidden = !register;
-    $("auth-confirm").required = register;
+    $("auth-confirm-field").hidden = !(register || change);
+    $("auth-confirm").required = register || change;
     $("auth-newpassword-field").hidden = !change;
     $("auth-newpassword").required = change;
     // 重設模式下密碼欄位藏起來但仍參與 HTML5 校驗：登入模式打了一半的
@@ -3627,7 +3627,7 @@
       authSetMsg(EA_ERRORS["password must be at least 8 characters"], "is-bad");
       return;
     }
-    if (register && pwToCheck !== $("auth-confirm").value) {
+    if ((register || change) && pwToCheck !== $("auth-confirm").value) {
       authSetMsg("兩次輸入的密碼不一致。", "is-bad");
       return;
     }
@@ -3656,6 +3656,7 @@
       if (change) {
         authSetMsg("密碼已修改，下次請用新密碼登入。", "is-ok");
         $("auth-newpassword").value = "";
+        $("auth-confirm").value = "";
         return;
       }
       account.user = body.user;
