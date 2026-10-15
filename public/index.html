@@ -413,6 +413,10 @@
      these. It keeps an aria-label instead of the bubble. */
   .tip.no-hover:not(:disabled):hover::after,
   .tip.no-hover:focus-visible::after { opacity: 0; }
+  /* The success notice must snap off instantly, not fade: the green colour
+     is removed the same moment is-done clears, so a fade-out would flash
+     the bubble in the default text colour on its way out. */
+  .tip.no-hover::after { transition: none; }
   /* Locating can take seconds; hide the prompt bubble while the spinner runs,
      rather than letting it park on screen until the result lands. */
   .tip.is-busy::after { opacity: 0 !important; }
