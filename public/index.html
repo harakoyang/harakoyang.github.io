@@ -407,18 +407,18 @@
   @media (hover: hover) {
     .tip:not(:disabled):hover::after { opacity: 1; }
   }
-  /* Once a locate is started the bubble stays suppressed until the pointer
-     leaves the button — the default hover text must never reappear mid-flow,
-     even while parked on the button. opacity:0 with no transition guarantees
-     an instant snap when the success notice (is-done, below) clears. */
-  .tip.is-quiet::after { opacity: 0 !important; transition: none; }
   .tip:focus-visible::after { opacity: 1; }
+  /* The geo button has no hover prompt — its tip element only ever carries
+     the success notice (is-done below), whose !important still wins over
+     these. It keeps an aria-label instead of the bubble. */
+  .tip.no-hover:not(:disabled):hover::after,
+  .tip.no-hover:focus-visible::after { opacity: 0; }
   /* Locating can take seconds; hide the prompt bubble while the spinner runs,
      rather than letting it park on screen until the result lands. */
   .tip.is-busy::after { opacity: 0 !important; }
   /* Confirmation the button shows on its own, without waiting for a hover.
-     !important + placed after is-quiet so the success text wins over the
-     suppressed state while the operation is still in progress. */
+     !important + placed after the no-hover rule so the success text wins
+     over the suppressed hover while the operation is still in progress. */
   .tip.is-done::after { opacity: 1 !important; color: var(--ok); border-color: var(--ok); }
 
   /* ---------- Toolbar: advanced-filter disclosure + sort ---------- */
@@ -1490,7 +1490,7 @@
           <span class="crit-field">
             <input type="number" id="lat" value="23.5" step="0.5" min="-90" max="90" aria-describedby="lat-window">
             <span>°</span>
-            <button type="button" class="icon-btn tip" id="geo" data-tip="獲取當前緯度" aria-label="獲取當前緯度">
+            <button type="button" class="icon-btn tip no-hover" id="geo" aria-label="獲取當前緯度">
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M12 21.2c4.2-4 6.3-7.3 6.3-10a6.3 6.3 0 1 0-12.6 0c0 2.7 2.1 6 6.3 10Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
                 <circle cx="12" cy="11" r="2.4" stroke="currentColor" stroke-width="1.7"></circle>
@@ -2564,7 +2564,6 @@
     3: "定位逾時（" + (GEO_TIMEOUT / 1000) + " 秒內沒有回應），請稍後再試一次，或直接手動輸入緯度。"
   };
 
-  var GEO_TIP = "獲取當前緯度";
   var geoTipTimer = null;
 
   function geoBusy(busy) {
@@ -2574,22 +2573,12 @@
 
   function clearGeoTip() {
     clearTimeout(geoTipTimer);
-    var btn = $("geo");
-    btn.classList.remove("is-done");
-    // Restore the default hover text now that the result is done. If the
-    // pointer is parked on the button the bubble stays hidden by is-quiet, so
-    // the swap is invisible; once it leaves (see mouseleave handler) normal
-    // hover behaviour resumes.
-    btn.dataset.tip = GEO_TIP;
-    var parked = btn.matches(":hover") || btn.matches(":focus-visible");
-    if (!parked) btn.classList.remove("is-quiet");
+    $("geo").classList.remove("is-done");
   }
 
-  // The button carries no label, so its hover bubble doubles as the success
-  // notice for a moment rather than interrupting with a dialog. is-quiet is
-  // intentionally left in place: the success text (is-done) overrides the
-  // suppressed opacity, and when the notice clears we fall straight back to
-  // opacity:0 without ever surfacing the default hover text mid-flow.
+  // The button carries no visible label, so its tip element doubles as the
+  // success notice for a moment rather than interrupting with a dialog. It
+  // never shows a hover prompt (see the no-hover rule in the CSS).
   function flashGeoTip(text) {
     clearTimeout(geoTipTimer);
     var btn = $("geo");
@@ -2608,11 +2597,6 @@
     }
 
     clearGeoTip();
-    // Once the user triggers a locate, the default hover bubble stays
-    // suppressed for the rest of the session so it can never flash back in
-    // (e.g. while the success notice is up, or after moving away and back).
-    // The silent on-load auto-locate does not change the hover behaviour.
-    if (!silent) $("geo").classList.add("is-quiet");
     geoBusy(true);
     navigator.geolocation.getCurrentPosition(function (pos) {
       geoBusy(false);
@@ -2627,8 +2611,6 @@
       geoBusy(false);
       if (!silent) {
         window.alert(GEO_ERRORS[err.code] || "定位失敗，請手動輸入緯度。");
-        // Result delivered: normal hover behaviour may resume (clearGeoTip
-        // keeps it suppressed only while the pointer is still parked).
         clearGeoTip();
       }
     }, { enableHighAccuracy: false, timeout: GEO_TIMEOUT, maximumAge: 300000 });
@@ -2644,19 +2626,7 @@
   }
 
   function bindGeolocate() {
-    var btn = $("geo");
-    btn.addEventListener("click", function () { requestLocation(false); });
-    // While the operation is running (is-busy) or its success notice is still
-    // on (is-done), leaving the button must not lift the suppression:
-    // re-entering mid-flow would otherwise flash the default prompt. Once the
-    // result is cleared a leave/blur here restores normal hover for next time.
-    ["mouseleave", "blur"].forEach(function (evt) {
-      btn.addEventListener(evt, function () {
-        if (btn.classList.contains("is-done") || btn.classList.contains("is-busy")) return;
-        btn.classList.remove("is-quiet");
-        btn.dataset.tip = GEO_TIP;
-      });
-    });
+    $("geo").addEventListener("click", function () { requestLocation(false); });
     autoLocate();
   }
 
