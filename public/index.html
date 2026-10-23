@@ -3087,10 +3087,11 @@
     stage.addEventListener("pointerup", endDrag);
     stage.addEventListener("pointercancel", endDrag);
 
-    // Single click closes; double click resets the view.
+    // Single click closes; double click toggles zoom — at scale 1 it zooms
+    // in centered on the clicked point, when zoomed it resets the view.
     // iOS Safari does not fire `dblclick` on touch-action:none elements, so
-    // we detect double-tap ourselves via a timestamp and trigger the reset
-    // directly from the click handler. Desktop still benefits from the same
+    // we detect double-tap ourselves via a timestamp and act on it directly
+    // from the click handler. Desktop still benefits from the same
     // path — the native dblclick handler below is kept only as a no-op guard.
     stage.addEventListener("click", function (e) {
       if (e.target.closest("button, a")) return;
@@ -3099,16 +3100,25 @@
       if (lb.afterPinch) return;
       if (lb.dragged) { lb.dragged = false; return; }
       var now = Date.now();
-      if (now - lb.lastTap < 250 && lb.scale > 1) {
-        // Second tap of a double-tap: cancel the pending close and reset zoom.
+      if (now - lb.lastTap < 250) {
+        // Second tap of a double-tap: cancel the pending close and toggle zoom.
         lb.lastTap = 0;
         if (lb.clickTimer) { clearTimeout(lb.clickTimer); lb.clickTimer = null; }
         var img = $("lb-img");
         var glass = $("lb-glass-img");
-        var resetTransition = "transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)";
-        img.style.transition = resetTransition;
-        glass.style.transition = resetTransition;
-        lbResetView();
+        var dblTransition = "transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)";
+        img.style.transition = dblTransition;
+        glass.style.transition = dblTransition;
+        if (lb.scale > 1) {
+          lbResetView();
+        } else {
+          // Zoom in anchored at the clicked point, using the same
+          // stage-center coordinate mapping as the wheel handler (the bar/2
+          // term compensates the image's upward offset — see lbApply).
+          var rect = stage.getBoundingClientRect();
+          var bar = document.querySelector(".lb-ui").offsetHeight;
+          lbZoom(2, e.clientX - rect.left - rect.width / 2, e.clientY - rect.top - rect.height / 2 + bar / 2);
+        }
         setTimeout(function () { img.style.transition = ""; glass.style.transition = ""; }, 320);
         return;
       }
