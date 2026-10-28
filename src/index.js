@@ -4,7 +4,7 @@ import * as feedback from "./feedback.js";
 import { runWeeklyReview, latestSnapshot, runNow } from "./review.js";
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
     // 静态资源优先命中，走到这里的都是 public/ 下没有对应文件的路径。
@@ -13,7 +13,7 @@ export default {
     }
 
     try {
-      return await route(request, env, url);
+      return await route(request, env, url, ctx);
     } catch (err) {
       if (err instanceof HttpError) {
         const init = { status: err.status };
@@ -33,7 +33,7 @@ export default {
   },
 };
 
-async function route(request, env, url) {
+async function route(request, env, url, ctx) {
   const path = url.pathname;
   const method = request.method;
 
@@ -61,7 +61,7 @@ async function route(request, env, url) {
   if (method === "GET" && path === "/api/me") return auth.me(request, env);
 
   if (path === "/api/feedback") {
-    if (method === "POST") return feedback.create(request, env);
+    if (method === "POST") return feedback.create(request, env, ctx);
     if (method === "GET") return feedback.listMine(request, env);
   }
   const mineMatch = path.match(/^\/api\/feedback\/(\d+)$/);
