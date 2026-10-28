@@ -5,7 +5,7 @@ const MAX_CONTENT = 2000;
 const HOURLY_QUOTA = 5;
 const VALID_STATUS = ["new", "triaged", "done", "wontfix"];
 
-export async function create(request, env) {
+export async function create(request, env, ctx) {
   const user = await requireUser(request, env);
   const body = await request.json().catch(() => null);
   if (!body) throw new HttpError(400, "expected json body");
@@ -44,7 +44,33 @@ export async function create(request, env) {
     .bind(user.id, target, content, Date.now())
     .first();
 
+  // 企微群通知放 waitUntil：不拖慢回應，推送失敗只記 log，不影響提交本身。
+  if (ctx && env.WECOM_WEBHOOK_URL) {
+    ctx.waitUntil(notifyWecom(env, { id: row.id, login: user.login, target, content }));
+  }
+
   return json({ id: row.id }, { status: 201 });
+}
+
+// 企微群機器人 text 消息上限 2048 bytes，中文佔 3 bytes，內容截斷到 500 字保底。
+async function notifyWecom(env, { id, login, target, content }) {
+  const excerpt = content.length > 500 ? content.slice(0, 500) + "…" : content;
+  const text =
+    `新回报 #${id}\n用户：${login}\n目标：${target || "-"}\n内容：${excerpt}`;
+  try {
+    const res = await fetch(env.WECOM_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ msgtype: "text", text: { content: text } }),
+    });
+    // 企微 webhook 業務錯誤也回 200，要看 body 裡的 errcode。
+    const data = await res.json().catch(() => null);
+    if (!res.ok || (data && data.errcode)) {
+      console.error(`wecom notify failed: HTTP ${res.status} ${JSON.stringify(data)}`);
+    }
+  } catch (err) {
+    console.error(`wecom notify failed: ${err}`);
+  }
 }
 
 export async function listMine(request, env) {
