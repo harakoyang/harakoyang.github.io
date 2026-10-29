@@ -31,12 +31,8 @@
     }
   ],
 
-  // 每周一 01:00 UTC（台北时间 09:00）跑一次待 review 汇总。
-  "triggers": { "crons": ["0 1 * * 1"] },
-
   "vars": {
-    "SITE_URL": "https://harako.cc.cd",
-    "REVIEW_WINDOW_DAYS": "7"
+    "SITE_URL": "https://harako.cc.cd"
   },
 
   // 顶层即生产（harako-site），由 main 分支部署；env.dev 是预发（harako-site-dev），
@@ -63,18 +59,14 @@
       // SITE_URL 必须跟着预发域名走：OAuth 的 redirect_uri 会拿它跟请求的
       // hostname 比对，不改的话预发登入会被导回生产站。
       "vars": {
-        "SITE_URL": "https://dev.harako.cc.cd",
-        "REVIEW_WINDOW_DAYS": "7"
+        "SITE_URL": "https://dev.harako.cc.cd"
       },
 
       // 生产的自订网域是在面板上挂的，沿用现状不写进设定；预发这条是新的，
       // 交给 wrangler 建，省掉手动点一次。
       "routes": [
         { "pattern": "dev.harako.cc.cd", "custom_domain": true }
-      ],
-
-      // 预发不跑周报：同一份汇总寄两封没有意义，而且预发库里都是测试资料。
-      "triggers": { "crons": [] }
+      ]
     }
   }
 }

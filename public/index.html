@@ -1356,23 +1356,7 @@
   .auth-msg[hidden] { display: none; }
   .auth-msg.is-bad { color: var(--bad); background: var(--bad-bg); }
   .auth-msg.is-ok { color: var(--ok); background: var(--ok-bg); }
-  .auth-hint { margin: 0 0 12px; font-size: 12.5px; color: var(--muted); }
-  .auth-hint[hidden] { display: none; }
   .auth-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
-  /* 忘記密碼連結壓在動作列左側，與右邊的取消/登入鈕同一行。 */
-  .auth-forgot {
-    margin-right: auto;
-    padding: 4px 6px;
-    font: inherit;
-    font-size: 12.5px;
-    color: var(--muted);
-    background: none;
-    border: none;
-    border-radius: 7px;
-    cursor: pointer;
-  }
-  .auth-forgot[hidden] { display: none; }
-  @media (hover: hover) { .auth-forgot:hover { color: var(--text); } }
   .auth-switch {
     display: block;
     margin: 12px auto 0;
@@ -1759,10 +1743,8 @@
       <label for="auth-confirm" id="auth-confirm-label">確認密碼</label>
       <input type="password" id="auth-confirm" minlength="8" maxlength="128" autocomplete="new-password" placeholder="再輸入一次密碼">
     </div>
-    <p class="auth-hint" id="auth-hint" hidden="">輸入註冊時的電子郵件，系統會把新密碼寄到該信箱。</p>
     <p class="auth-msg" id="auth-msg" hidden=""></p>
     <div class="auth-actions">
-      <button type="button" class="auth-forgot" id="auth-forgot">忘記密碼？</button>
       <button type="button" class="chip" id="auth-cancel">取消</button>
       <button type="submit" class="chip is-primary" id="auth-submit">登入</button>
     </div>
@@ -3306,7 +3288,6 @@
     "password must be at least 8 characters": "密碼至少要 8 個字元。",
     "email already registered": "此電子郵件已註冊，請直接登入。",
     "invalid email or password": "電子郵件或密碼錯誤。",
-    "email send failed, try later": "信件寄送失敗，請稍後再試。",
     "password login not available for this account": "此帳號使用第三方登入，沒有站內密碼。"
   };
 
@@ -3611,42 +3592,30 @@
     window.location.href = "/api/auth/login/" + encodeURIComponent(provider);
   }
 
-  /* ---------- Email 註冊/登入彈窗（含忘記密碼、修改密碼） ---------- */
-  var authMode = "login"; // login | register | reset | change
+  /* ---------- Email 註冊/登入彈窗（含修改密碼） ---------- */
+  var authMode = "login"; // login | register | change
 
   function authApplyMode() {
     var register = authMode === "register";
-    var reset = authMode === "reset";
     var change = authMode === "change";
-    $("auth-h").textContent =
-      register ? "註冊帳號" : reset ? "重設密碼" : change ? "修改密碼" : "登入帳號";
+    $("auth-h").textContent = register ? "註冊帳號" : change ? "修改密碼" : "登入帳號";
     $("auth-name-field").hidden = !register;
     $("auth-name").required = register;
     $("auth-email-field").hidden = change;
     $("auth-email").required = !change;
     // 密碼欄在登入/註冊顯示；修改密碼填新密碼＋確認密碼，原密碼欄不再需要。
-    $("auth-password-field").hidden = reset || change;
-    $("auth-password").required = !reset && !change;
+    $("auth-password-field").hidden = change;
+    $("auth-password").required = !change;
     $("auth-confirm-field").hidden = !(register || change);
     $("auth-confirm").required = register || change;
     $("auth-confirm-label").textContent = change ? "確認新密碼" : "確認密碼";
     $("auth-newpassword-field").hidden = !change;
     $("auth-newpassword").required = change;
-    // 重設模式下密碼欄位藏起來但仍參與 HTML5 校驗：登入模式打了一半的
-    // 短密碼會觸發 minlength 擋下表單，進重設模式時直接清空。
-    if (reset) $("auth-password").value = "";
-    $("auth-hint").hidden = !reset;
-    $("auth-forgot").hidden = authMode !== "login";
     // 修改密碼是登入態操作，沒有「切去註冊/登入」的需求，切換連結整個藏掉。
     $("auth-switch").hidden = change;
-    $("auth-submit").textContent =
-      register ? "註冊" : reset ? "寄送新密碼" : change ? "確認修改" : "登入";
+    $("auth-submit").textContent = register ? "註冊" : change ? "確認修改" : "登入";
     if (!change) {
-      $("auth-switch").textContent = register
-        ? "已有帳號？返回登入"
-        : reset
-          ? "想起密碼了？返回登入"
-          : "還沒有帳號？立即註冊";
+      $("auth-switch").textContent = register ? "已有帳號？返回登入" : "還沒有帳號？立即註冊";
     }
     // 告訴瀏覽器/密碼管理器這是新建密碼還是核對密碼，提示詞也不一樣。
     $("auth-password").setAttribute(
@@ -3687,13 +3656,12 @@
   function submitAuth(e) {
     e.preventDefault();
     var register = authMode === "register";
-    var reset = authMode === "reset";
     var change = authMode === "change";
     var payload = {
       email: $("auth-email").value.trim()
     };
-    // 修改密碼已是登入態，後端不再驗原密碼；重設密碼只寄信，兩者都不帶密碼欄。
-    if (!reset && !change) payload.password = $("auth-password").value;
+    // 修改密碼已是登入態，後端不再驗原密碼。
+    if (!change) payload.password = $("auth-password").value;
     if (register) payload.login = $("auth-name").value.trim();
     if (change) payload.newPassword = $("auth-newpassword").value;
 
@@ -3707,7 +3675,7 @@
       return;
     }
     var pwToCheck = change ? payload.newPassword : payload.password;
-    if (!reset && pwToCheck.length < 8) {
+    if (pwToCheck.length < 8) {
       authSetMsg(EA_ERRORS["password must be at least 8 characters"], "is-bad");
       return;
     }
@@ -3722,21 +3690,14 @@
 
     var url = register
       ? "/api/auth/register"
-      : reset
-        ? "/api/auth/reset-password"
-        : change
-          ? "/api/auth/change-password"
-          : "/api/auth/login";
+      : change
+        ? "/api/auth/change-password"
+        : "/api/auth/login";
     api(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload)
     }).then(function (body) {
-      if (reset) {
-        authSetMsg("已寄出新密碼，請到信箱查看。", "is-ok");
-        $("auth-email").value = "";
-        return;
-      }
       if (change) {
         authSetMsg("密碼已修改，下次請用新密碼登入。", "is-ok");
         $("auth-newpassword").value = "";
@@ -3798,12 +3759,6 @@
       authMode = authMode === "login" ? "register" : "login";
       authSetMsg("");
       authApplyMode();
-    });
-    $("auth-forgot").addEventListener("click", function () {
-      authMode = "reset";
-      authSetMsg("");
-      authApplyMode();
-      setTimeout(function () { $("auth-email").focus(); }, 0);
     });
     $("auth-cancel").addEventListener("click", function () { authSetOpen(false); });
     $("auth-backdrop").addEventListener("click", function () { authSetOpen(false); });
