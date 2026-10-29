@@ -1,5 +1,4 @@
 import { HttpError, json, readCookie, cookieHeader, clearCookieHeader } from "./http.js";
-import { sendEmail } from "./mail.js";
 
 const SESSION_TTL = 60 * 60 * 24 * 30;
 const STATE_TTL = 60 * 10;
@@ -338,8 +337,8 @@ async function readCredentials(request) {
 
 // ---------------------------------------------------------------------------
 // 限流：KV 固定窗口（rl:<prefix>:<窗口序号>），TTL 两个窗口让旧 key 自动过期，
-// 免建表免清理。窗口交界处最多放行两倍配额，对注册灌水、密码爆破、
-// 邮件轰炸这类滥用场景足够。KV 读写在 SESSIONS 命名空间，和会话共存。
+// 免建表免清理。窗口交界处最多放行两倍配额，对注册灌水和密码爆破足够。
+// KV 读写在 SESSIONS 命名空间，和会话共存。
 // ---------------------------------------------------------------------------
 
 const RL_WINDOW_S = 3600;
@@ -358,7 +357,6 @@ async function rlBump(env, prefix) {
   });
 }
 
-// 只查不计：由调用方在真正产生副作用后自行 rlBump（如重设密码是寄信成功才计次）。
 async function rlCheck(env, prefix, limit) {
   if ((await rlCount(env, prefix)) >= limit) {
     const retryAfter = Math.max(1, (rlBucket() + 1) * RL_WINDOW_S - Math.floor(Date.now() / 1000));
@@ -370,10 +368,6 @@ async function rlCheck(env, prefix, limit) {
 async function rlGuard(env, prefix, limit) {
   await rlCheck(env, prefix, limit);
   await rlBump(env, prefix);
-}
-
-async function rlClear(env, prefix) {
-  await env.SESSIONS.delete(`rl:${prefix}:${rlBucket()}`);
 }
 
 // 本地 wrangler dev 没有 cf-connecting-ip，全部归到同一个桶即可。
@@ -447,77 +441,6 @@ export async function passwordLogin(request, env) {
 }
 
 // ---------------------------------------------------------------------------
-// 忘記密碼：密碼只存 PBKDF2 雜湊，無法還原，所以是生成一組臨時密碼寄過去。
-// 顺序刻意安排成「先寄信、成功才改哈希」：寄送失敗時舊密碼仍然有效，
-// 使用者不會因為一封信沒寄到就被鎖在門外。
-// ---------------------------------------------------------------------------
-
-// 避開 0/O、1/l/I 這類容易看錯的字元，從信件照抄時少踩坑。
-const TEMP_ALPHABET = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789";
-
-function generateTempPassword() {
-  const out = [];
-  while (out.length < 10) {
-    const b = crypto.getRandomValues(new Uint8Array(1))[0];
-    // 54 * 4 = 216，拒絕 >= 216 的位元組，避免取模分佈不均。
-    if (b < 216) out.push(TEMP_ALPHABET[b % TEMP_ALPHABET.length]);
-  }
-  return out.join("");
-}
-
-export async function resetPassword(request, env) {
-  const { email } = await readCredentials(request);
-  if (email.length > EMAIL_MAX || !EMAIL_RE.test(email)) {
-    throw new HttpError(400, "invalid email");
-  }
-
-  // IP 維度每次嘗試都計，擋住「拿別人信箱批量觸發重設」的騷擾；
-  // 信箱維度只在真的寄出信時才計（下面 rlBump），服務異常時重試不耗配額。
-  await rlGuard(env, `resetip:${clientIp(request)}`, 10);
-  await rlCheck(env, `reset:${email}`, 3);
-
-  const row = await env.DB.prepare(
-    "SELECT id FROM users WHERE provider = 'email' AND provider_uid = ?"
-  )
-    .bind(email)
-    .first();
-
-  // 查無此信箱也回一樣的成功訊息，回應內容不得洩漏該信箱有沒有註冊過。
-  if (!row) return json({ ok: true });
-
-  const tempPassword = generateTempPassword();
-  const ok = await sendEmail(env, {
-    to: email,
-    subject: "密碼重設 — 天体観測「Tentai Kansoku」Catalogue",
-    text:
-      `你的新密碼是：${tempPassword}\n\n` +
-      "舊密碼已失效，請用這組新密碼登入。如果這不是你本人的操作，" +
-      "表示有人誤填了你的信箱；只有你收得到這封信，帳號依然安全，" +
-      "可再重設一次取得另一組密碼。",
-    html:
-      `<p>你的新密碼是：</p>` +
-      `<p style="font-size:20px;font-weight:bold;letter-spacing:2px;">${tempPassword}</p>` +
-      `<p>舊密碼已失效，請用這組新密碼登入。</p>` +
-      `<p style="color:#888;">如果這不是你本人的操作，表示有人誤填了你的信箱；` +
-      `只有你收得到這封信，帳號依然安全，可再重設一次取得另一組密碼。</p>`,
-  });
-  if (!ok) {
-    // RESEND_API_KEY 未設定或 Resend 故障：密碼維持不變，使用者可稍後重試。
-    throw new HttpError(502, "email send failed, try later");
-  }
-
-  await env.DB.prepare("UPDATE users SET password_hash = ? WHERE id = ?")
-    .bind(await hashPassword(tempPassword), row.id)
-    .run();
-
-  await rlBump(env, `reset:${email}`);
-  // 剛拿到新密碼的人不該被重設前的登入失敗次數擋住，順手清零。
-  await rlClear(env, `login:${email}`);
-
-  return json({ ok: true });
-}
-
-// ---------------------------------------------------------------------------
 // 修改密碼：登入態主動改密，不需要驗原密碼。OAuth 帳號沒有站內密碼，直接拒絕。
 // ---------------------------------------------------------------------------
 
@@ -541,7 +464,7 @@ export async function changePassword(request, env) {
   // PBKDF2 一輪 10 萬次迭代很吃 CPU，限流必須排在雜湊前面。
   await rlGuard(env, `chpw:${user.id}`, 10);
 
-  // 與重設路徑同一套 hashPassword，保證登入驗證契約一致。
+  // 與登入驗證用同一套 hashPassword。
   await env.DB.prepare("UPDATE users SET password_hash = ? WHERE id = ?")
     .bind(await hashPassword(newPassword), user.id)
     .run();
