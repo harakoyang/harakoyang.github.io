@@ -7,7 +7,6 @@
     "deploy": "wrangler deploy",
     "db:init": "wrangler d1 migrations apply harako --local",
     "db:migrate": "wrangler d1 migrations apply harako --remote",
-    "cron:test": "curl \"http://localhost:8787/cdn-cgi/handler/scheduled\"",
     "tail": "wrangler tail"
   },
   "devDependencies": {

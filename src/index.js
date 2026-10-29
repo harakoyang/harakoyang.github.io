@@ -1,7 +1,6 @@
 import { HttpError, json } from "./http.js";
 import * as auth from "./auth.js";
 import * as feedback from "./feedback.js";
-import { runWeeklyReview, latestSnapshot, runNow } from "./review.js";
 
 export default {
   async fetch(request, env, ctx) {
@@ -27,10 +26,6 @@ export default {
       return json({ error: "internal error" }, { status: 500 });
     }
   },
-
-  async scheduled(event, env, ctx) {
-    ctx.waitUntil(runWeeklyReview(env));
-  },
 };
 
 async function route(request, env, url, ctx) {
@@ -52,7 +47,6 @@ async function route(request, env, url, ctx) {
   // 這兩條只收 POST，方法不同互不衝突。
   if (method === "POST" && path === "/api/auth/register") return auth.register(request, env);
   if (method === "POST" && path === "/api/auth/login") return auth.passwordLogin(request, env);
-  if (method === "POST" && path === "/api/auth/reset-password") return auth.resetPassword(request, env);
   if (method === "POST" && path === "/api/auth/change-password") return auth.changePassword(request, env);
 
   // 前端拉取已配置的 provider 列表，按需显示登录按钮
@@ -70,10 +64,6 @@ async function route(request, env, url, ctx) {
   }
 
   if (method === "GET" && path === "/api/admin/feedback") return feedback.listAll(request, env, url);
-  if (path === "/api/admin/review") {
-    if (method === "GET") return latestSnapshot(request, env);
-    if (method === "POST") return runNow(request, env);
-  }
 
   const statusMatch = path.match(/^\/api\/admin\/feedback\/(\d+)$/);
   if (method === "PATCH" && statusMatch) {

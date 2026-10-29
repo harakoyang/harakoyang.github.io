@@ -22,7 +22,7 @@ CREATE TABLE feedback (
   reviewed_at INTEGER
 );
 
--- cron 每周按 (status, created_at) 扫一次待 review 的行，投稿限流按
+-- 按 (status, created_at) 扫待处理回报，投稿限流按
 -- (user_id, created_at) 数最近一小时的条数。没有这两个索引就是全表扫描，
 -- 免费版 500 万行读/天会被这类定时任务悄悄吃光。
 CREATE INDEX idx_feedback_review ON feedback (status, created_at);
