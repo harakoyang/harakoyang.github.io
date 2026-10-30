@@ -1,5 +1,6 @@
-# 复制成 .dev.vars 后填入，本地 wrangler dev 会自动读取（已在 .gitignore 里）。
-# 线上用 `npx wrangler secret put <NAME>` 写入，不要提交到仓库。
+# 复制成 .dev.vars 后填入，本地 wrangler pages dev 会自动读取（已在 .gitignore 里）。
+# 线上用 `npx wrangler pages secret put <NAME> --project-name harako-site` 写入。
+# 预发再加 --env preview。不要提交到仓库。Worker 上的旧 secret 不会自动带过来。
 GITHUB_CLIENT_ID=
 GITHUB_CLIENT_SECRET=
 

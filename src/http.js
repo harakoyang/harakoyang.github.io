@@ -33,7 +33,7 @@ export function readCookie(request, name) {
 
 // __Host- 前缀要求 Secure + Path=/ 且不带 Domain，浏览器会拒绝任何不满足的
 // 写入，等于免费拿到「子域不能伪造这个 cookie」的保证。http://localhost 被
-// 当作安全上下文，所以本地 wrangler dev 也能正常设置。
+// 当作安全上下文，所以本地 wrangler pages dev 也能正常设置。
 export function cookieHeader(name, value, maxAge) {
   const attrs = [
     `__Host-${name}=${encodeURIComponent(value)}`,

@@ -2,31 +2,30 @@ import { HttpError, json } from "./http.js";
 import * as auth from "./auth.js";
 import * as feedback from "./feedback.js";
 
-export default {
-  async fetch(request, env, ctx) {
-    const url = new URL(request.url);
+// Pages Function 只挂在 /api/*。静态文件由 Pages 从 public/ 直接发出，
+// 不会进到这里。
+export async function handleRequest(request, env, ctx) {
+  const url = new URL(request.url);
 
-    // 静态资源优先命中，走到这里的都是 public/ 下没有对应文件的路径。
-    if (!url.pathname.startsWith("/api/")) {
-      return new Response("Not found", { status: 404 });
-    }
+  if (!url.pathname.startsWith("/api/")) {
+    return new Response("Not found", { status: 404 });
+  }
 
-    try {
-      return await route(request, env, url, ctx);
-    } catch (err) {
-      if (err instanceof HttpError) {
-        const init = { status: err.status };
-        if (err.details && typeof err.details.retry_after === "number") {
-          // Retry-After 是標準頭，值為秒；內容同步放進 JSON 方便前端直接讀。
-          init.headers = { "retry-after": String(err.details.retry_after) };
-        }
-        return json({ error: err.message, ...(err.details || {}) }, init);
+  try {
+    return await route(request, env, url, ctx);
+  } catch (err) {
+    if (err instanceof HttpError) {
+      const init = { status: err.status };
+      if (err.details && typeof err.details.retry_after === "number") {
+        // Retry-After 是標準頭，值為秒；內容同步放進 JSON 方便前端直接讀。
+        init.headers = { "retry-after": String(err.details.retry_after) };
       }
-      console.error(err);
-      return json({ error: "internal error" }, { status: 500 });
+      return json({ error: err.message, ...(err.details || {}) }, init);
     }
-  },
-};
+    console.error(err);
+    return json({ error: "internal error" }, { status: 500 });
+  }
+}
 
 async function route(request, env, url, ctx) {
   const path = url.pathname;

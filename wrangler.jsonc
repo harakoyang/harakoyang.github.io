@@ -1,22 +1,15 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "harako-site",
-  "main": "src/index.js",
+  "pages_build_output_dir": "./public",
   "compatibility_date": "2026-09-22",
-  "observability": { "enabled": true },
 
-  // 关掉 workers.dev 子域。开着的话 harako-site.<子域>.workers.dev 会是生产站
-  // 一份功能完整的公开副本，登入与回报都写进同一个生产 D1。预发走
-  // dev.harako.cc.cd，不需要这个兜底入口。
-  "workers_dev": false,
-
-  // 刻意不设 not_found_handling：默认的 "none" 会把匹配不到静态文件的路径
-  // 交给 Worker，/api/* 才进得来。换成 "single-page-application" 会让
-  // index.html 吞掉所有未命中路径，API 永远收不到请求。
-  "assets": {
-    "directory": "./public",
-    "binding": "ASSETS"
-  },
+  // Cloudflare Pages，不再是 Worker。
+  // 静态文件由 Pages 直接从 public/ 发出；/api/* 走 functions/。
+  // 生产入口是 https://harako-site.pages.dev 。国内打不开 *.workers.dev，
+  // *.pages.dev 可以。自订网域 harako.cc.cd / dev.harako.cc.cd 不写在这里：
+  // wrangler 没有 pages domain 命令，要在 Pages 控制台挂，而且必须先把
+  // 同名网域从旧 Worker 上拆掉，否则会冲突。
 
   "kv_namespaces": [
     { "binding": "SESSIONS", "id": "972eb298ba0b49bbb3c81bbc270f647f" }
@@ -35,14 +28,15 @@
     "SITE_URL": "https://harako.cc.cd"
   },
 
-  // 顶层即生产（harako-site），由 main 分支部署；env.dev 是预发（harako-site-dev），
-  // 由 dev 分支部署。
+  // 顶层配置给本地 `wrangler pages dev` 和生产部署（生产分支 main）。
+  // env.preview 给其余分支，目前是 dev。Pages 只有 production / preview
+  // 两个环境名，不能再沿用 Worker 的 env.dev。
   //
-  // KV、D1、vars 这几项 wrangler 不会从顶层继承到具名环境，必须逐项重写 ——
-  // 这里正好是我们要的：预发挂的是另一套 KV 与 D1，跑 dev 不会动到生产的
-  // 帐号和回报资料。漏写会直接部署失败，而不是悄悄连上生产库。
+  // KV、D1、vars 不可继承：预发只要覆盖其中一项，三项都得重写。
+  // 这里预发挂的是另一套 KV 与 D1，跑 dev 不会动到生产的帐号和回报。
+  // 漏写会直接部署失败，而不是悄悄连上生产库。
   "env": {
-    "dev": {
+    "preview": {
       "kv_namespaces": [
         { "binding": "SESSIONS", "id": "42ba7894a1bc45d9a908b360231c114b" }
       ],
@@ -60,13 +54,7 @@
       // hostname 比对，不改的话预发登入会被导回生产站。
       "vars": {
         "SITE_URL": "https://dev.harako.cc.cd"
-      },
-
-      // 生产的自订网域是在面板上挂的，沿用现状不写进设定；预发这条是新的，
-      // 交给 wrangler 建，省掉手动点一次。
-      "routes": [
-        { "pattern": "dev.harako.cc.cd", "custom_domain": true }
-      ]
+      }
     }
   }
 }
