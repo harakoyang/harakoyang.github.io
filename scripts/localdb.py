@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def add_db_args(parser) -> None:
-    parser.add_argument("--env", help="配置环境名，例如 dev。省略时远程库是 harako")
+    parser.add_argument("--env", help="配置环境名，例如 preview。省略时远程库是 harako")
     parser.add_argument("--db", help="改为打开这个本地 SQLite 文件")
 
 
