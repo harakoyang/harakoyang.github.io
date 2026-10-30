@@ -17,9 +17,9 @@ function providerCookie(value, maxAge) {
   return cookieHeader("oauth_provider", value, maxAge);
 }
 
-// redirect_uri 跟着请求自己的 hostname 走，而不是写死 SITE_URL：正式域名切过来
-// 之前要先在 workers.dev 上验一轮，写死的话每换一个地址都得改配置重新 deploy。
-// 只认 SITE_URL、workers.dev 预览域和本地，其余一律退回 SITE_URL，免得伪造的
+// redirect_uri 跟着请求自己的 hostname 走，而不是写死 SITE_URL：pages.dev
+// 和自订网域要能各自完成登入，写死的话每换一个地址都得改配置重新 deploy。
+// 只认 SITE_URL、pages.dev 和本地，其余一律退回 SITE_URL，免得伪造的
 // Host 头把授权码导去别的站。
 const LOCAL_HOSTS = ["localhost", "127.0.0.1"];
 
@@ -27,7 +27,7 @@ function trustedOrigin(request, env) {
   const url = new URL(request.url);
   const trusted =
     url.hostname === new URL(env.SITE_URL).hostname ||
-    url.hostname.endsWith(".workers.dev") ||
+    url.hostname.endsWith(".pages.dev") ||
     LOCAL_HOSTS.includes(url.hostname);
   return trusted ? url.origin : env.SITE_URL;
 }
@@ -370,7 +370,7 @@ async function rlGuard(env, prefix, limit) {
   await rlBump(env, prefix);
 }
 
-// 本地 wrangler dev 没有 cf-connecting-ip，全部归到同一个桶即可。
+// 本地 wrangler pages dev 没有 cf-connecting-ip，全部归到同一个桶即可。
 function clientIp(request) {
   return request.headers.get("cf-connecting-ip") || "local";
 }

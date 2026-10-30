@@ -3,11 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "dev": "wrangler pages dev",
+    "deploy": "wrangler pages deploy",
     "db:init": "wrangler d1 migrations apply harako --local",
     "db:migrate": "wrangler d1 migrations apply harako --remote",
-    "tail": "wrangler tail"
+    "db:migrate:preview": "wrangler d1 migrations apply harako-dev --remote --env preview",
+    "tail": "wrangler pages deployment tail"
   },
   "devDependencies": {
     "wrangler": "^4.136.1"
