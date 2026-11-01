@@ -2837,6 +2837,12 @@
     lastTap: 0
   };
 
+  // 单击关闭与双击缩放共用的判定窗口。它必须不小于常见操作系统的双击间隔
+  // （Windows 默认 500ms）：取 250ms 时，稍慢的双击还没等来第二击，第一击
+  // 的关闭定时器就先触发，把灯箱关掉了。单击关闭因此会多等这一小段，这是
+  // 区分单击与双击不可避免的代价。
+  var LB_DBL_MS = 400;
+
   function lbApply() {
     var bar = document.querySelector(".lb-ui").offsetHeight;
     $("lightbox").style.setProperty("--lb-bar", bar + "px");
@@ -3078,7 +3084,14 @@
       var lbImg = $("lb-img");
       if (!lbImg.src || new URL(lbImg.src, location.href).href !== new URL(lb.currentSrc, location.href).href) return;
       $("lb-stage").classList.remove("is-loading");
-      lbResetView();
+      // 加载期间用户可能已经先对缩略图双击/双指缩放了；整图就绪后保留缩放，
+      // 只按整图的真实尺寸重新夹取边界，不要把视图重置回 1 倍。
+      if (lb.scale > 1) {
+        lbClamp();
+        lbApply();
+      } else {
+        lbResetView();
+      }
     });
     $("lb-img").addEventListener("error", function () {
       $("lb-stage").classList.remove("is-loading");
@@ -3162,7 +3175,7 @@
         lb.clickTimer = setTimeout(function () {
           lb.clickTimer = null;
           lbClose();
-        }, 250);
+        }, LB_DBL_MS);
       }
     }
     stage.addEventListener("pointerup", endDrag);
@@ -3181,7 +3194,7 @@
       if (lb.afterPinch) return;
       if (lb.dragged) { lb.dragged = false; return; }
       var now = Date.now();
-      if (now - lb.lastTap < 250) {
+      if (now - lb.lastTap < LB_DBL_MS) {
         // Second tap of a double-tap: cancel the pending close and toggle zoom.
         lb.lastTap = 0;
         if (lb.clickTimer) { clearTimeout(lb.clickTimer); lb.clickTimer = null; }
@@ -3208,7 +3221,7 @@
       lb.clickTimer = setTimeout(function () {
         lb.clickTimer = null;
         lbClose();
-      }, 250);
+      }, LB_DBL_MS);
     });
     stage.addEventListener("dblclick", function (e) {
       // Handled by the click-based double-tap detection above; just suppress
