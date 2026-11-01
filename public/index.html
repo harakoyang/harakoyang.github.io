@@ -1871,7 +1871,7 @@
 
   // Bump this when any local photo file is replaced, so browsers bypass
   // their cached copy and fetch the new image instead of showing the old one.
-  var IMG_VER = "20261022c";
+  var IMG_VER = "20261101";
   function imgUrl(u) {
     if (!u) return u;
     if (u.indexOf("assets/photos/") === 0 || u.indexOf("./assets/photos/") === 0) {
@@ -2837,6 +2837,12 @@
     lastTap: 0
   };
 
+  // 单击关闭与双击缩放共用的判定窗口。它必须不小于常见操作系统的双击间隔
+  // （Windows 默认 500ms）：取 250ms 时，稍慢的双击还没等来第二击，第一击
+  // 的关闭定时器就先触发，把灯箱关掉了。单击关闭因此会多等这一小段，这是
+  // 区分单击与双击不可避免的代价。
+  var LB_DBL_MS = 400;
+
   function lbApply() {
     var bar = document.querySelector(".lb-ui").offsetHeight;
     $("lightbox").style.setProperty("--lb-bar", bar + "px");
@@ -3010,6 +3016,12 @@
       if ("scrollRestoration" in history) history.scrollRestoration = "manual";
     }
     syncBodyLock();
+    // Tap/double-tap state must not leak across sessions: the previous
+    // session's last tap (or a still-pending close timer) would otherwise
+    // make the first tap after reopening look like the second tap of a
+    // double-tap, or close the freshly opened image.
+    lb.lastTap = 0;
+    if (lb.clickTimer) { clearTimeout(lb.clickTimer); lb.clickTimer = null; }
     lbResetView();
     // Push a history entry so the browser Back button closes the lightbox
     // instead of leaving the page. 只在首次打开压一条，避免切换图片时堆出
@@ -3022,6 +3034,7 @@
     lb.open = false;
     lb.drag = false;
     if (lb.clickTimer) { clearTimeout(lb.clickTimer); lb.clickTimer = null; }
+    lb.lastTap = 0;
     if (lb.indicatorTimer) { clearTimeout(lb.indicatorTimer); lb.indicatorTimer = null; }
     $("lb-indicator").classList.remove("is-visible");
     $("lb-stage").classList.remove("is-loading");
@@ -3078,7 +3091,14 @@
       var lbImg = $("lb-img");
       if (!lbImg.src || new URL(lbImg.src, location.href).href !== new URL(lb.currentSrc, location.href).href) return;
       $("lb-stage").classList.remove("is-loading");
-      lbResetView();
+      // 加载期间用户可能已经先对缩略图双击/双指缩放了；整图就绪后保留缩放，
+      // 只按整图的真实尺寸重新夹取边界，不要把视图重置回 1 倍。
+      if (lb.scale > 1) {
+        lbClamp();
+        lbApply();
+      } else {
+        lbResetView();
+      }
     });
     $("lb-img").addEventListener("error", function () {
       $("lb-stage").classList.remove("is-loading");
@@ -3134,7 +3154,7 @@
         var dx = e.clientX - lb.px;
         var dy = e.clientY - lb.py;
         if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
-          lb.dragged = true; // mark as swipe so the click handler won't close
+          lb.dragged = true; // mark as swipe so the tap handler won't close
         }
       }
     });
@@ -3155,34 +3175,19 @@
         lbNav(dx < 0 ? 1 : -1);
         return;
       }
-      // Tap at scale 1: start the close timer here as a fallback for mobile
-      // browsers that delay or suppress click events after a touch gesture.
-      // On desktop, the click handler sees the timer is already set and skips.
-      if (!wasDragging && lb.scale === 1 && !lb.dragged && !lb.clickTimer) {
-        lb.clickTimer = setTimeout(function () {
-          lb.clickTimer = null;
-          lbClose();
-        }, 250);
-      }
-    }
-    stage.addEventListener("pointerup", endDrag);
-    stage.addEventListener("pointercancel", endDrag);
-
-    // Single click closes; double click toggles zoom — at scale 1 it zooms
-    // in centered on the clicked point, when zoomed it resets the view.
-    // iOS Safari does not fire `dblclick` on touch-action:none elements, so
-    // we detect double-tap ourselves via a timestamp and act on it directly
-    // from the click handler. Desktop still benefits from the same
-    // path — the native dblclick handler below is kept only as a no-op guard.
-    stage.addEventListener("click", function (e) {
-      if (e.target.closest("button, a")) return;
-      // A synthesized click that follows a pinch release must not close.
-      // afterPinch is cleared on the next real pointerdown.
-      if (lb.afterPinch) return;
-      if (lb.dragged) { lb.dragged = false; return; }
+      // Tap gesture (no drag, no swipe): single tap closes, double tap
+      // toggles zoom. Detection runs on pointerup rather than click so the
+      // double-tap window and the close timer share the same time origin —
+      // a synthesized click delayed by main-thread jank (e.g. decoding the
+      // just-opened full image) used to arrive after the timer had fired,
+      // closing the lightbox instead of zooming.
+      if (lb.dragged) return;
+      if (e.target.closest && e.target.closest("button, a")) return;
       var now = Date.now();
-      if (now - lb.lastTap < 250) {
-        // Second tap of a double-tap: cancel the pending close and toggle zoom.
+      if (now - lb.lastTap < LB_DBL_MS) {
+        // Second tap of a double-tap: cancel the pending close and toggle
+        // zoom — at scale 1 zoom in centered on the tapped point, when
+        // zoomed reset the view.
         lb.lastTap = 0;
         if (lb.clickTimer) { clearTimeout(lb.clickTimer); lb.clickTimer = null; }
         var img = $("lb-img");
@@ -3193,7 +3198,7 @@
         if (lb.scale > 1) {
           lbResetView();
         } else {
-          // Zoom in anchored at the clicked point, using the same
+          // Zoom in anchored at the tapped point, using the same
           // stage-center coordinate mapping as the wheel handler (the bar/2
           // term compensates the image's upward offset — see lbApply).
           var rect = stage.getBoundingClientRect();
@@ -3203,16 +3208,20 @@
         setTimeout(function () { img.style.transition = ""; glass.style.transition = ""; }, 320);
         return;
       }
+      // First tap: arm the close timer; a second tap within LB_DBL_MS
+      // cancels it above.
       lb.lastTap = now;
-      if (lb.clickTimer) return; // already armed by the pointerup fallback
       lb.clickTimer = setTimeout(function () {
         lb.clickTimer = null;
         lbClose();
-      }, 250);
-    });
+      }, LB_DBL_MS);
+    }
+    stage.addEventListener("pointerup", endDrag);
+    stage.addEventListener("pointercancel", endDrag);
+
     stage.addEventListener("dblclick", function (e) {
-      // Handled by the click-based double-tap detection above; just suppress
-      // any native double-click default action.
+      // Double-tap is detected in endDrag via pointerup timestamps; just
+      // suppress any native double-click default action (e.g. text selection).
       e.preventDefault();
     });
 
