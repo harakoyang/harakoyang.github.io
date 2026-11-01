@@ -1,5 +1,5 @@
-# push main 部署生产 Pages（harako-site.pages.dev，自订网域 harako.cc.cd）。
-# push dev 部署预发（dev.harako-site.pages.dev，自订网域 dev.harako.cc.cd）。
+# push main 部署生产 Pages（harako-site.pages.dev，自订网域 harako.us.ci）。
+# push dev 部署预发（dev.harako-site.pages.dev，预发不挂自订网域）。
 # 两套环境各自挂独立的 KV 与 D1，见 wrangler.jsonc 的 env.preview。
 #
 # 需要在 GitHub 仓库 Settings → Secrets and variables → Actions 配置：
