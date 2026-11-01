@@ -45,18 +45,20 @@ export async function create(request, env, ctx) {
     .first();
 
   // 企微群通知放 waitUntil：不拖慢回應，推送失敗只記 log，不影響提交本身。
+  // 帶上請求來源 hostname：生產與預發共用同一個群機器人，靠這個區分環境。
   if (ctx && env.WECOM_WEBHOOK_URL) {
-    ctx.waitUntil(notifyWecom(env, { id: row.id, login: user.login, target, content }));
+    const host = new URL(request.url).hostname;
+    ctx.waitUntil(notifyWecom(env, { id: row.id, login: user.login, target, content, host }));
   }
 
   return json({ id: row.id }, { status: 201 });
 }
 
 // 企微群機器人 text 消息上限 2048 bytes，中文佔 3 bytes，內容截斷到 500 字保底。
-async function notifyWecom(env, { id, login, target, content }) {
+async function notifyWecom(env, { id, login, target, content, host }) {
   const excerpt = content.length > 500 ? content.slice(0, 500) + "…" : content;
   const text =
-    `新回报 #${id}\n用户：${login}\n目标：${target || "-"}\n内容：${excerpt}`;
+    `新回报 #${id} [${host}]\n用户：${login}\n目标：${target || "-"}\n内容：${excerpt}`;
   try {
     const res = await fetch(env.WECOM_WEBHOOK_URL, {
       method: "POST",
