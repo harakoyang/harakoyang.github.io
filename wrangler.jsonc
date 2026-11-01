@@ -7,7 +7,7 @@
   // Cloudflare Pages，不再是 Worker。
   // 静态文件由 Pages 直接从 public/ 发出；/api/* 走 functions/。
   // 生产入口是 https://harako-site.pages.dev 。国内打不开 *.workers.dev，
-  // *.pages.dev 可以。自订网域 harako.cc.cd / dev.harako.cc.cd 不写在这里：
+  // *.pages.dev 可以。自订网域 harako.us.ci 不写在这里：
   // wrangler 没有 pages domain 命令，要在 Pages 控制台挂，而且必须先把
   // 同名网域从旧 Worker 上拆掉，否则会冲突。
 
@@ -25,7 +25,7 @@
   ],
 
   "vars": {
-    "SITE_URL": "https://harako.cc.cd"
+    "SITE_URL": "https://harako.us.ci"
   },
 
   // 顶层配置给本地 `wrangler pages dev` 和生产部署（生产分支 main）。
@@ -52,8 +52,9 @@
 
       // SITE_URL 必须跟着预发域名走：OAuth 的 redirect_uri 会拿它跟请求的
       // hostname 比对，不改的话预发登入会被导回生产站。
+      // 预发不再挂自订网域，直接用 dev 分支的 pages.dev 别名。
       "vars": {
-        "SITE_URL": "https://dev.harako.cc.cd"
+        "SITE_URL": "https://dev.harako-site.pages.dev"
       }
     }
   }
