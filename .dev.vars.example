@@ -7,5 +7,9 @@ GITHUB_CLIENT_SECRET=
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 
+# 企微群機器人 webhook，新回報推送用。留空則靜默跳過通知。
+# 生產與預發共用同一個群，消息裡會帶來源 hostname 區分環境。
+WECOM_WEBHOOK_URL=
+
 # 回报脚本的 Cloudflare 令牌写在根目录 cloudflare-token.txt（已加入 .gitignore）。
 # 令牌需要有对应账号的 D1 编辑权限。能访问多个账号时，在同一文件里再写 CLOUDFLARE_ACCOUNT_ID。
