@@ -2863,25 +2863,38 @@
   function lbClamp() {
     var img = $("lb-img");
     var stage = $("lb-stage");
-    var sw = stage.clientWidth;
-    var sh = stage.clientHeight;
+    var bar = document.querySelector(".lb-ui").offsetHeight;
+    // 图片盒子与 CSS #lb-img 一致：宽 100%，高 = 舞台高 - 底栏高。
+    var boxW = stage.clientWidth;
+    var boxH = stage.clientHeight - bar;
     var iw = img.naturalWidth || 0;
     var ih = img.naturalHeight || 0;
-    var scaledW = iw * lb.scale;
-    var scaledH = ih * lb.scale;
-    var bar = document.querySelector(".lb-ui").offsetHeight;
+    if (!iw || !ih) {
+      lb.x = 0;
+      lb.y = 0;
+      return;
+    }
+    // 夹取必须按 object-fit: contain 后的实际显示尺寸算，而不是
+    // naturalWidth × scale：低分辨率原图（如 620×410）在 contain 下已被放大
+    // 填满盒子，用位图像素判断会一直认为“没超出舞台”，把 x/y 锁死在 0，
+    // 表现为放大后完全拖不动。
+    var fit = Math.min(boxW / iw, boxH / ih);
+    var scaledW = iw * fit * lb.scale;
+    var scaledH = ih * fit * lb.scale;
 
-    if (scaledW <= sw) {
+    if (scaledW <= boxW) {
       lb.x = 0;
     } else {
-      var maxX = (scaledW - sw) / 2;
+      var maxX = (scaledW - boxW) / 2;
       lb.x = Math.max(-maxX, Math.min(maxX, lb.x));
     }
-    if (scaledH <= sh) {
+    // 图片盒子的中心比舞台中心上移了 bar/2（见 lbApply），可见区中心与盒子
+    // 中心重合，所以 y 的边界就是 ±maxY，不能再叠加 bar/2。
+    if (scaledH <= boxH) {
       lb.y = 0;
     } else {
-      var maxY = (scaledH - sh) / 2;
-      lb.y = Math.max(bar / 2 - maxY, Math.min(bar / 2 + maxY, lb.y));
+      var maxY = (scaledH - boxH) / 2;
+      lb.y = Math.max(-maxY, Math.min(maxY, lb.y));
     }
   }
 
