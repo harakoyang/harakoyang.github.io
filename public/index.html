@@ -2834,6 +2834,7 @@
     afterPinch: false,
     clickTimer: null,
     indicatorTimer: null,
+    bounceTimer: null,
     lastTap: 0
   };
 
@@ -2896,6 +2897,29 @@
       var maxY = (scaledH - boxH) / 2;
       lb.y = Math.max(-maxY, Math.min(maxY, lb.y));
     }
+  }
+
+  // 拖动/捏合过程中允许越界；松手后夹回合法范围并做回弹动画。
+  function lbSnapBack() {
+    var beforeX = lb.x;
+    var beforeY = lb.y;
+    lbClamp();
+    if (beforeX === lb.x && beforeY === lb.y) {
+      lbApply();
+      return;
+    }
+    var img = $("lb-img");
+    var glass = $("lb-glass-img");
+    var bounce = "transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)";
+    img.style.transition = bounce;
+    glass.style.transition = bounce;
+    lbApply();
+    if (lb.bounceTimer) clearTimeout(lb.bounceTimer);
+    lb.bounceTimer = setTimeout(function () {
+      lb.bounceTimer = null;
+      img.style.transition = "";
+      glass.style.transition = "";
+    }, 320);
   }
 
   function lbResetView() {
@@ -3145,6 +3169,10 @@
       if (e.pointerType === "touch" && lb.pinch) return;
       // Fresh touch: clear the after-pinch guard so a real tap can close.
       lb.afterPinch = false;
+      // Interrupt any in-flight bounce so the new drag tracks the finger.
+      if (lb.bounceTimer) { clearTimeout(lb.bounceTimer); lb.bounceTimer = null; }
+      $("lb-img").style.transition = "";
+      $("lb-glass-img").style.transition = "";
       lb.px = e.clientX;
       lb.py = e.clientY;
       lb.sx = lb.x;
@@ -3158,9 +3186,9 @@
     stage.addEventListener("pointermove", function (e) {
       if (lb.pinch) return;
       if (lb.drag) {
+        // 拖动时不夹边界，允许越界；松手后再回弹复位。
         lb.x = lb.sx + (e.clientX - lb.px);
         lb.y = lb.sy + (e.clientY - lb.py);
-        lbClamp();
         lbApply();
         if (Math.hypot(e.clientX - lb.px, e.clientY - lb.py) > 5) lb.dragged = true;
       } else if (lb.scale === 1 && !lb.dragged) {
@@ -3176,6 +3204,8 @@
       lb.drag = false;
       stage.classList.remove("is-dragging");
       try { stage.releasePointerCapture(e.pointerId); } catch (err) {}
+      // 放大拖动松手/取消：若已越界则回弹到合法范围。
+      if (wasDragging && lb.scale > 1) lbSnapBack();
       if (e.type === "pointercancel") return;
       // The release of a two-finger pinch must not be read as a tap-to-close.
       // `afterPinch` is set when the pinch ends (touchend < 2 touches) and
@@ -3278,14 +3308,18 @@
         lb.scale = next;
       }
       if (lb.scale === 1) { lb.x = 0; lb.y = 0; }
-      lbClamp();
+      // 捏合过程中不夹边界，结束时再回弹复位。
       lbApply();
     }, { passive: false });
     stage.addEventListener("touchend", function (e) {
       if (e.touches.length < 2) {
         // A pinch just ended (or the last finger lifted). Mark it so the
         // following pointerup isn't mistaken for a tap-to-close at scale 1.
-        if (lb.pinch) lb.afterPinch = true;
+        if (lb.pinch) {
+          lb.afterPinch = true;
+          if (lb.scale > 1) lbSnapBack();
+          else { lb.x = 0; lb.y = 0; lbApply(); }
+        }
         lb.pinch = 0;
       }
     }, { passive: true });
