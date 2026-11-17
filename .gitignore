@@ -7,4 +7,5 @@ __pycache__/
 !.dev.vars.example
 回报处理脚本.txt
 cloudflare-token.txt
+github-token.txt
 oauth-secrets.txt
